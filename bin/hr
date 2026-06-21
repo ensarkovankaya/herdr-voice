@@ -14,10 +14,12 @@ myip=$(tailscale ip -4 | head -1)
 # 1) lokal sink çalışıyor mu? değilse başlat (detached)
 if ! curl -fsS "http://127.0.0.1:${port}/health" >/dev/null 2>&1; then
   nohup "$NODE" "$ROOT/src/voice-sink.mjs" >"$ROOT/sink.log" 2>&1 &
-  for _ in 1 2 3 4 5 10; do
-    curl -fsS "http://127.0.0.1:${port}/health" >/dev/null 2>&1 && break
+  up=false
+  for _ in $(seq 1 10); do
+    if curl -fsS "http://127.0.0.1:${port}/health" >/dev/null 2>&1; then up=true; break; fi
     sleep 0.3
   done
+  [ "$up" = true ] || echo "uyarı: lokal voice-sink ayağa kalkmadı (port ${port}); ses çalmayabilir" >&2
 fi
 
 # 2) host router'a kaydol
