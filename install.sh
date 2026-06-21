@@ -39,10 +39,10 @@ tmp="$(mktemp)"
 jq \
   --arg stop "$CMD_STOP" --arg notify "$CMD_NOTIFY" '
   .hooks = (.hooks // {})
-  | .hooks.Stop = ((.hooks.Stop // []) + [{"hooks":[{"type":"command","command":$stop}]}])
-  | .hooks.Notification = ((.hooks.Notification // []) + [{"matcher":"permission_prompt|idle_prompt","hooks":[{"type":"command","command":$notify}]}])
+  | .hooks.Stop = ((.hooks.Stop // []) | if any(.[]?.hooks[]?; .command == $stop) then . else . + [{"hooks":[{"type":"command","command":$stop}]}] end)
+  | .hooks.Notification = ((.hooks.Notification // []) | if any(.[]?.hooks[]?; .command == $notify) then . else . + [{"matcher":"permission_prompt|idle_prompt","hooks":[{"type":"command","command":$notify}]}] end)
   ' "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
-echo "settings.json hook'ları eklendi (Stop + Notification)"
+echo "settings.json hook'ları eklendi/korundu (Stop + Notification, idempotent)"
 
 # 3) launchd router
 PLIST="$HOME/Library/LaunchAgents/dev.ensar.herd-voice.router.plist"
