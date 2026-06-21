@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CFG="${HERD_VOICE_CONFIG:-$HOME/.config/herd-voice/config.json}"
+NODE="$(command -v node)"
+REMOTE_HOST="${1:-${HERD_REMOTE_HOST:-mac-m4}}"   # herdr --remote hedefi (host mac)
+
+token=$(jq -r '.token' "$CFG")
+router=$(jq -r '.host' "$CFG")                    # host router IP (örn 100.109.4.84)
+port=$(jq -r '.port // 8973' "$CFG")
+myip=$(tailscale ip -4 | head -1)
+
+# 1) lokal sink çalışıyor mu? değilse başlat (detached)
+if ! curl -fsS "http://127.0.0.1:${port}/health" >/dev/null 2>&1; then
+  nohup "$NODE" "$ROOT/src/voice-sink.mjs" >"$ROOT/sink.log" 2>&1 &
+  for _ in 1 2 3 4 5 10; do
+    curl -fsS "http://127.0.0.1:${port}/health" >/dev/null 2>&1 && break
+    sleep 0.3
+  done
+fi
+
+# 2) host router'a kaydol
+curl -fsS -m 3 -X POST "http://${router}:${port}/register" \
+  -H "x-voice-token: ${token}" -H 'content-type: application/json' \
+  -d "{\"ip\":\"${myip}\",\"port\":${port}}" >/dev/null || echo "uyarı: register başarısız" >&2
+
+# 3) çıkışta kaydı sil
+cleanup() {
+  curl -fsS -m 3 -X POST "http://${router}:${port}/deregister" \
+    -H "x-voice-token: ${token}" -H 'content-type: application/json' -d '{}' >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+# 4) herdr remote attach
+exec herdr --remote "$REMOTE_HOST"
