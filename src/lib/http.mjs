@@ -24,14 +24,19 @@ export function postJson(urlStr, body, { token = '', timeoutMs = 1500 } = {}) {
 
 export function readJsonBody(req, { limit = 1_000_000 } = {}) {
   return new Promise((resolve, reject) => {
-    let buf = ''; let size = 0;
+    let buf = ''; let size = 0; let done = false;
+    const fail = (e) => { if (done) return; done = true; req.destroy(); reject(e); };
     req.on('data', (c) => {
+      if (done) return;
       size += c.length;
-      if (size > limit) { req.destroy(); reject(new Error('payload too large')); }
-      else buf += c;
+      if (size > limit) return fail(new Error('payload too large'));
+      buf += c;
     });
-    req.on('end', () => { try { resolve(buf ? JSON.parse(buf) : {}); } catch (e) { reject(e); } });
-    req.on('error', reject);
+    req.on('end', () => {
+      if (done) return; done = true;
+      try { resolve(buf ? JSON.parse(buf) : {}); } catch (e) { reject(e); }
+    });
+    req.on('error', (e) => fail(e));
   });
 }
 
