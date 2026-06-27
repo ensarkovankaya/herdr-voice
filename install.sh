@@ -28,7 +28,25 @@ if [ ! -f "$CFG" ]; then
 JSON
   echo "config yazıldı: $CFG (token üretildi)"
 else
-  echo "config zaten var: $CFG"
+  # config var: token eksik/boşsa üret + eksik alanları doldur (mevcut değerleri koru)
+  if [ -z "$(jq -r '.token // ""' "$CFG")" ]; then
+    TOKEN="$(openssl rand -hex 16)"
+    tmp_cfg="$(mktemp)"
+    jq --arg t "$TOKEN" '
+      .token = $t
+      | .host = (.host // "127.0.0.1")
+      | .port = (.port // 8973)
+      | .voice = (.voice // "Yelda")
+      | .enabled = true
+      | .remoteTtlMs = (.remoteTtlMs // 3600000)
+      | .forwardTimeoutMs = (.forwardTimeoutMs // 1500)
+      | .postTimeoutMs = (.postTimeoutMs // 1500)
+      | .cue = (.cue // "Onayın gerekiyor.")
+    ' "$CFG" > "$tmp_cfg" && mv "$tmp_cfg" "$CFG"
+    echo "config'te token yoktu → üretildi + eksik alanlar dolduruldu: $CFG"
+  else
+    echo "config zaten var (token mevcut): $CFG"
+  fi
 fi
 
 # 2) Claude hook'larını settings.json'a MERGE et (mevcutları koru)
