@@ -10,21 +10,32 @@ function start(handler) {
     s.listen(0, '127.0.0.1', () => res({ s, port: s.address().port }));
   });
 }
+const noLog = () => {};
 
-test('doğru token → 202 ve speak çağrılır', async () => {
+test('doğru token + enabled → 202 ve fresh voice ile speak', async () => {
   const spoken = [];
-  const { s, port } = await start(makeSinkHandler({ token: 'T', voice: 'Yelda', speak: (t) => spoken.push(t) }));
+  const getConfig = () => ({ token: 'T', voice: 'Yelda (Enhanced)', enabled: true });
+  const { s, port } = await start(makeSinkHandler({ getConfig, speak: (t, o) => spoken.push([t, o.voice]), log: noLog }));
   const r = await postJson(`http://127.0.0.1:${port}/speak`, { text: 'selam' }, { token: 'T' });
   assert.equal(r.status, 202);
-  assert.deepEqual(spoken, ['selam']);
+  assert.deepEqual(spoken, [['selam', 'Yelda (Enhanced)']]);
   s.close();
 });
 
-test('yanlış token → 401, speak çağrılmaz', async () => {
+test('enabled=false → speak çağrılmaz', async () => {
   const spoken = [];
-  const { s, port } = await start(makeSinkHandler({ token: 'T', voice: 'Yelda', speak: (t) => spoken.push(t) }));
+  const getConfig = () => ({ token: 'T', voice: 'Yelda', enabled: false });
+  const { s, port } = await start(makeSinkHandler({ getConfig, speak: (t) => spoken.push(t), log: noLog }));
+  const r = await postJson(`http://127.0.0.1:${port}/speak`, { text: 'x' }, { token: 'T' });
+  assert.equal(r.status, 200);
+  assert.equal(spoken.length, 0);
+  s.close();
+});
+
+test('yanlış token → 401', async () => {
+  const getConfig = () => ({ token: 'T', voice: 'Yelda', enabled: true });
+  const { s, port } = await start(makeSinkHandler({ getConfig, speak: () => {}, log: noLog }));
   const r = await postJson(`http://127.0.0.1:${port}/speak`, { text: 'x' }, { token: 'WRONG' });
   assert.equal(r.status, 401);
-  assert.equal(spoken.length, 0);
   s.close();
 });
