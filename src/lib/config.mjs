@@ -1,19 +1,20 @@
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { stringsFor } from './strings.mjs';
 
 const DEFAULTS = {
   token: '',
   host: '127.0.0.1',
   port: 8973,
-  voice: 'Yelda',
+  language: 'en',
+  voice: 'Samantha',
   enabled: false,
   role: 'host',
   remoteHost: '',
   remoteTtlMs: 3_600_000,
   forwardTimeoutMs: 1500,
   postTimeoutMs: 1500,
-  cue: 'Onayın gerekiyor.',
 };
 
 export function configPath() {
@@ -22,9 +23,14 @@ export function configPath() {
 }
 
 export function loadConfig() {
-  try {
-    return { ...DEFAULTS, ...JSON.parse(readFileSync(configPath(), 'utf8')) };
-  } catch {
-    return { ...DEFAULTS };
-  }
+  let raw = {};
+  try { raw = JSON.parse(readFileSync(configPath(), 'utf8')); } catch { /* fall back to defaults */ }
+  const merged = { ...DEFAULTS, ...raw };
+  // Spoken strings default to the language pack; explicit config fields win.
+  const pack = stringsFor(merged.language);
+  merged.cue = raw.cue ?? pack.cue;
+  merged.fallback = raw.fallback ?? pack.fallback;
+  merged.voiceOnText = raw.voiceOnText ?? pack.voiceOn;
+  merged.voiceOffText = raw.voiceOffText ?? pack.voiceOff;
+  return merged;
 }

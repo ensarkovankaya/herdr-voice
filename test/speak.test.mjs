@@ -5,29 +5,29 @@ import { makeSpeak } from '../src/lib/speak.mjs';
 
 const tick = () => new Promise((r) => setImmediate(r));
 
-test('boş metin spawn etmez', async () => {
+test('empty text does not spawn', async () => {
   let calls = 0;
   const speak = makeSpeak(() => { calls++; const e = new EventEmitter(); queueMicrotask(() => e.emit('close')); return e; });
   await speak('   ');
   assert.equal(calls, 0);
 });
 
-test('çağrılar seri: ikincisi birincisi bitene kadar başlamaz', async () => {
+test('calls are serial: the second waits for the first to finish', async () => {
   const emitters = [];
   const speak = makeSpeak((cmd, args) => {
     const e = new EventEmitter(); e._args = args; emitters.push(e); return e;
   });
-  speak('bir'); speak('iki');
+  speak('one'); speak('two');
   await tick();
   assert.equal(emitters.length, 1);
-  assert.deepEqual(emitters[0]._args, ['-v', 'Yelda', 'bir']);
+  assert.deepEqual(emitters[0]._args, ['-v', 'Samantha', 'one']);
   emitters[0].emit('close');
   await tick();
   assert.equal(emitters.length, 2);
-  assert.deepEqual(emitters[1]._args, ['-v', 'Yelda', 'iki']);
+  assert.deepEqual(emitters[1]._args, ['-v', 'Samantha', 'two']);
 });
 
-test('3+ seri: üçüncü, ikincisi koşarken başlamaz', async () => {
+test('3+ serial: the third does not start while the second runs', async () => {
   const emitters = [];
   const speak = makeSpeak(() => { const e = new EventEmitter(); emitters.push(e); return e; });
   speak('a'); speak('b'); speak('c');

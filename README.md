@@ -1,301 +1,267 @@
-# herd-voice v2
+# 🔊 herd-voice
 
-Claude Code bir işi bitirdiğinde (veya onay/girdi beklerken), **o an oturduğun cihazda** kısa bir **Türkçe sesli özet** duyuran araç. macOS `say -v Yelda` ile konuşur; lokalde host Mac'ten, remote'dan `herdr --remote` ile bağlıyken away-laptop'tan çalar.
+> Spoken summaries for **Claude Code** — heard on whatever device you're actually sitting at.
 
-> VoiceInk gibi araçlar **ses→metin** (STT) tarafını çözer; herd-voice tersini yapar: **metin→ses** (TTS). Sadece Claude'un sesli **çıktısı** içindir.
+herd-voice says a short sentence out loud whenever Claude Code **finishes a task** or **needs your approval**. Working locally? It plays on your Mac. Connected from another machine with [`herdr --remote`](https://herdr.dev)? It follows you there. The talking is done by the built-in macOS `say` command — **no cloud, no API keys, no npm dependencies.**
+
+It's the inverse of dictation tools like VoiceInk (which do **speech → text**); herd-voice does **text → speech** for Claude's output only.
 
 ______________________________________________________________________
 
-## Nasıl çalışır?
+## ✨ Highlights
+
+- 🔔 **Speaks on the moments that matter** — task done, or approval/input needed.
+- 📍 **Follows you across devices** — presence-aware routing over [Tailscale](https://tailscale.com); audio plays where you are.
+- 🗣️ **Any voice, any language** — uses any installed macOS voice; ships with `en` and `tr` string packs, fully overridable from config.
+- 🔌 **herdr plugin** — toggle voice on/off with a keybind, see status in your prompt.
+- 🪶 **Tiny footprint** — daemons are Node.js stdlib only (zero npm deps); CLI is Bash.
+- 🛠️ **Real service** — launchd startup, rotating logs, one-command install & uninstall.
+
+______________________________________________________________________
+
+## How it works
 
 ```
-[Claude Code @ host Mac] iş bitirir / onay bekler
-        │  Stop hook (done)  ·  Notification hook (permission_prompt|idle_prompt)
+Claude Code (host Mac) finishes a task / needs approval
+        │  Stop hook                      Notification hook
+        ▼                                 (permission_prompt | idle_prompt)
+  speak-summary.mjs                  notify-cue.mjs          (Node, Claude hooks)
+        │  last assistant message → summarize → POST /speak {text}
         ▼
-  speak-summary.mjs / notify-cue.mjs   (Node, Claude hook'ları)
-        │  son asistan mesajını al → özetle → POST /speak {text}
-        ▼
-  voice-router  (launchd daemon @ host, 0.0.0.0:8973)
+  voice-router   (launchd daemon @ host, 0.0.0.0:8973)
         │
-        ├─ aktif remote sink kayıtlı & süresi geçmemiş?
-        │       └─ HAYIR → host'ta lokal konuş:  say -v Yelda
+        ├─ active remote registered & not expired?
+        │        └─ NO  → speak locally:  say -v <voice>
         │
-        └─ EVET → Tailscale üstünden POST http://<remote-ts-ip>:8973/speak
-                       │  (timeout ~1.5s)
-                       ├─ başarılı → voice-sink @ away-laptop → say -v Yelda
-                       └─ başarısız → kaydı temizle + host'ta lokal say (fallback)
+        └─ YES → forward over Tailscale → voice-sink @ remote → say -v <voice>
+                        └─ on failure → drop registration + speak locally (fallback)
 ```
 
-**"Aktif cihaz"** = o an herdr client'ının önünde oturduğun makine. `herdr --remote <host>` ile bağlandığında o cihaz kendini host router'a kaydeder (`/register`), çıkışta siler (`/deregister`). Kayıt yoksa/zaman aşımına uğramışsa router host'ta konuşur. Bu bilgi herdr'ın iç API'sine **bağlı değildir** (register + TTL + forward-timeout fallback ile yürür).
+**"Active device"** = the machine whose herdr client you're sitting in front of. When you run `herdr --remote <host>`, that device registers itself with the host router (`/register`) and deregisters on exit (`/deregister`). With no live registration (or an expired one), the router speaks on the host. This relies only on the registration + TTL + a forward-timeout fallback — **not** on herdr's internal API.
 
-### Bileşenler
+### Components
 
-| Dosya                                      | Rol                                                                                                                                                                                 |
-| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/voice-router.mjs`                     | **Host daemon.** `/speak`'i alır, aktif cihaza yönlendirir; `/register`·`/deregister` ile remote sink'i tutar; remote erişilemezse lokal `say`'e düşer. launchd ile her zaman açık. |
-| `src/voice-sink.mjs`                       | **Remote daemon.** `/speak {text}` → `say -v Yelda`. Install-remote ile launchd'ye yüklenir.                                                                                        |
-| `src/speak-summary.mjs`                    | **Claude Stop hook.** Transcript'ten son asistan mesajını alır → `summarize` → router'a POST. Asla throw etmez (Claude'u bloklamaz).                                                |
-| `src/notify-cue.mjs`                       | **Claude Notification hook.** Onay/girdi beklenirken sabit kısa ipucu ("Onayın gerekiyor.").                                                                                        |
-| `src/lib/summarize.mjs`                    | Markdown/kod temizler, ≤240 karaktere ilk cümle(ler)e indirger, boş/kod-only ise "Tamamlandı."                                                                                      |
-| `src/lib/{config,http,speak}.mjs`          | config yükleyici · küçük HTTP yardımcıları · seri `say` kuyruğu.                                                                                                                    |
-| `bin/herdr-voice`                          | **CLI:** `start/stop/restart/status/logs/enable/disable/uninstall` — makinenin herdr-voice daemon'unu yönetir.                                                                      |
-| `plugin/`                                  | **herdr plugin** (`ensar.herd-voice`): toggle/enable/disable action'ları + durum (host öğünde).                                                                                     |
-| `launchd/dev.ensar.herdr-voice.plist.tmpl` | voice-sink (remote) ve voice-router (host) için launchd şablonu.                                                                                                                    |
+| File                                              | Role                                                                                                                                                                                                 |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/voice-router.mjs`                            | **Host daemon.** Accepts `/speak`, routes to the active device; tracks the remote sink via `/register`·`/deregister`; falls back to local `say` if the remote is unreachable. Always-on via launchd. |
+| `src/voice-sink.mjs`                              | **Remote daemon.** `/speak {text}` → `say -v <voice>`. Installed as a launchd agent by `install-remote.sh`.                                                                                          |
+| `src/speak-summary.mjs`                           | **Claude Stop hook.** Reads the last assistant message from the transcript → `summarize` → POSTs to the router. Never throws (won't block Claude).                                                   |
+| `src/notify-cue.mjs`                              | **Claude Notification hook.** Speaks a short fixed cue when approval/input is needed.                                                                                                                |
+| `src/lib/summarize.mjs`                           | Strips markdown/code, reduces to the first sentence(s) (≤240 chars); falls back to a fixed phrase when empty.                                                                                        |
+| `src/lib/strings.mjs`                             | Built-in spoken-string packs (`en`, `tr`), selected by `config.language`.                                                                                                                            |
+| `src/lib/{config,http,speak,logger,presence}.mjs` | config loader · tiny HTTP helpers · serial `say` queue · rotating logger · presence watcher.                                                                                                         |
+| `bin/herdr-voice`                                 | **CLI:** `start/stop/restart/status/logs/enable/disable/uninstall` — manages this machine's daemon.                                                                                                  |
+| `plugin/`                                         | **herdr plugin** (`ensar.herd-voice`): toggle/enable/disable actions.                                                                                                                                |
+| `launchd/dev.ensar.herdr-voice.plist.tmpl`        | launchd template for both the router (host) and the sink (remote).                                                                                                                                   |
 
-Diller: daemon'lar + Claude hook'ları **Node.js** (sıfır npm bağımlılığı, sadece stdlib), CLI + plugin action'ları **Bash**.
-
-______________________________________________________________________
-
-## Ön koşullar
-
-- macOS (Apple Silicon veya Intel), Türkçe ses: `say -v Yelda` çalışmalı.
-- **herdr ≥ 0.7.0** (plugin API; `herdr update`).
-- `node` (nvm olabilir — install.sh/install-remote.sh mutlak yolu hook'lara/launchd'ye gömer), `jq`, `curl`, `tailscale`.
-- Cihazlar arası **Tailscale** mesh (remote senaryosu için).
-- `herdr --remote <host>` cmdline (herdr v0.7.0+) presence-aware routing için.
+Daemons + Claude hooks are **Node.js** (stdlib only); the CLI + plugin actions are **Bash**.
 
 ______________________________________________________________________
 
-## Kurulum
+## Requirements
 
-### Host (Claude buradan koşar)
+- **macOS** (Apple Silicon or Intel) with a working `say` voice — list them with `say -v '?'`.
+- **[herdr](https://herdr.dev) ≥ 0.7.0** (plugin API) — only needed for the plugin/keybind and remote routing.
+- `node`, `jq`, `curl`, and (for the remote scenario) `tailscale`.
+- A **Tailscale** mesh between your devices, if you want audio to follow you to a remote machine.
+
+______________________________________________________________________
+
+## Quick start
+
+### Host (where Claude Code runs)
 
 ```sh
+git clone https://github.com/ensarkovankaya/herdr-voice.git
+cd herdr-voice
 ./install.sh
 ```
 
-Yaptıkları:
+This will:
 
-1. `~/.herdr-voice/config.json` oluşturur ve **token üretir** (varsa ve token eksikse token'ı yamalar). Role: `host`.
-2. Claude Stop + Notification hook'larını `~/.claude/settings.json`'a **idempotent** ekler (mevcut hook'ları korur).
-3. launchd voice-router'ı yükler (`~/Library/LaunchAgents/dev.ensar.herdr-voice.plist`) ve health-check eder.
-4. herdr plugin'i link'ler (`herdr plugin link plugin/`).
+1. Create `~/.herdr-voice/config.json` and **generate a token**. Role: `host`.
+2. Add the Claude **Stop + Notification hooks** to `~/.claude/settings.json` (idempotent; existing hooks preserved).
+3. Load the launchd **voice-router** (`~/Library/LaunchAgents/dev.ensar.herdr-voice.plist`) and health-check it.
+4. Link the herdr plugin (`herdr plugin link plugin/`).
 
-Sonra **keybind**'i `~/.config/herdr/config.toml`'a ekle (install.sh çıktıda da yazdırır) ve herdr'a yükletmek için `herdr server reload-config` çalıştır:
+That's it — finish a task and you'll hear it. To toggle with a keybind, add this to `~/.config/herdr/config.toml`, then run `herdr server reload-config`:
 
 ```toml
 [[keys.command]]
 key = "prefix+shift+v"
 type = "plugin_action"
 command = "ensar.herd-voice.toggle"
-description = "herd-voice ses aç/kapa"
+description = "herd-voice: toggle voice"
 ```
 
-### Remote (away-laptop)
+### Remote (a second machine — optional)
+
+Run this on the **away** machine so audio follows you there when you `herdr --remote` into the host:
 
 ```sh
 git clone https://github.com/ensarkovankaya/herdr-voice.git
 cd herdr-voice
-./install-remote.sh <HOST_TS_IP> <TOKEN> [REMOTE_HOST]
+./install-remote.sh <HOST_TAILSCALE_IP> <TOKEN> [REMOTE_HOST]
 ```
 
-Örnek:
+- `<TOKEN>` — copy it from the host: `jq -r .token ~/.herdr-voice/config.json`. Must match on both sides.
+- `[REMOTE_HOST]` — optional; scopes which `herdr --remote <host>` session counts as "you're here" (omit to match any `--remote` session).
 
 ```sh
-./install-remote.sh 100.109.4.84 <token-from-host-config> mac-m4-jftf
+./install-remote.sh 100.x.y.z $(: paste token) my-host-magicdns
 ```
 
-Yaptıkları:
-
-1. `~/.herdr-voice/config.json` oluşturur. Role: `remote`, host IP, token, remoteHost (default: `mac-m4-jftf`).
-2. `~/.local/bin/herdr-voice` CLI'sini yükler.
-3. launchd voice-sink'i yükler (`~/Library/LaunchAgents/dev.ensar.herdr-voice.plist`).
-4. Eski v1 config'ini siler (`~/.config/herd-voice`).
-
-Kullanım:
+Then just connect — audio is routed to this device automatically while the session is live:
 
 ```sh
-herdr --remote <remoteHost>    # ör: herdr --remote mac-m4-jftf  → ses bu cihaza yönlendirilir
+herdr --remote my-host-magicdns
 ```
-
-Token: host'taki `jq -r .token ~/.herdr-voice/config.json`. Token iki tarafta **aynı** olmalı.
 
 ______________________________________________________________________
 
-## Konfigürasyon
+## Configuration
 
-`~/.herdr-voice/config.json` (override: `HERD_VOICE_CONFIG` env):
+`~/.herdr-voice/config.json` (override the path with `HERD_VOICE_CONFIG`):
 
-| Alan               | Varsayılan          | Açıklama                                                                                        |
-| ------------------ | ------------------- | ----------------------------------------------------------------------------------------------- |
-| `token`            | —                   | Paylaşılan secret; `X-Voice-Token` header'ında. Host ve remote'ta aynı.                         |
-| `host`             | `127.0.0.1`         | Bu makinenin gördüğü **router adresi**. Host'ta `127.0.0.1`; remote'ta host'un Tailscale IP'si. |
-| `port`             | `8973`              | Router/sink portu.                                                                              |
-| `voice`            | `Yelda`             | `say -v` sesi.                                                                                  |
-| `enabled`          | `true`              | Hook'lar yalnız `true` iken konuşur (router/sink her zaman çalışır).                            |
-| `role`             | —                   | `host` veya `remote`. Host'ta router, remote'ta sink başlatır.                                  |
-| `remoteHost`       | —                   | Remote'ta belirtilir; hangi uzak cihazın kendisini tanıtacağı adı.                              |
-| `remoteTtlMs`      | `3600000`           | Remote kaydının emniyet süresi.                                                                 |
-| `forwardTimeoutMs` | `1500`              | Router→remote sink forward timeout'u.                                                           |
-| `postTimeoutMs`    | `1500`              | Hook→router POST timeout'u.                                                                     |
-| `cue`              | `Onayın gerekiyor.` | Notification (blocked) ipucu metni.                                                             |
+| Field                          | Default       | Description                                                                                                          |
+| ------------------------------ | ------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `token`                        | *(generated)* | Shared secret sent as the `X-Voice-Token` header. Same on host and remote.                                           |
+| `host`                         | `127.0.0.1`   | The **router address** this machine talks to. `127.0.0.1` on the host; the host's Tailscale IP on a remote.          |
+| `port`                         | `8973`        | Router/sink port.                                                                                                    |
+| `language`                     | `en`          | Built-in spoken-string pack: `en` or `tr`. Drives the defaults for `cue`, `fallback`, `voiceOnText`, `voiceOffText`. |
+| `voice`                        | `Samantha`    | macOS `say -v` voice. List with `say -v '?'`.                                                                        |
+| `enabled`                      | `true`        | Hooks speak only when `true` (the router/sink always run).                                                           |
+| `role`                         | `host`        | `host` (runs the router) or `remote` (runs the sink + presence watcher).                                             |
+| `remoteHost`                   | `""`          | On a remote, scopes which `herdr --remote <host>` session counts as present (empty = any).                           |
+| `remoteTtlMs`                  | `3600000`     | Safety expiry for a remote registration.                                                                             |
+| `forwardTimeoutMs`             | `1500`        | Router→sink forward timeout.                                                                                         |
+| `postTimeoutMs`                | `1500`        | Hook→router POST timeout.                                                                                            |
+| `cue`                          | *(from pack)* | Spoken when approval/input is needed.                                                                                |
+| `fallback`                     | *(from pack)* | Spoken when the summary is empty.                                                                                    |
+| `voiceOnText` / `voiceOffText` | *(from pack)* | Spoken when toggling voice on/off.                                                                                   |
 
-Sesi değiştirmek: `voice` alanını güncelle + ilgili daemon'u yeniden başlat.
+Any spoken string can be overridden individually — set the field in `config.json` and it wins over the language pack.
+
+### Example: Turkish output
+
+```json
+{
+  "language": "tr",
+  "voice": "Yelda"
+}
+```
+
+`language: "tr"` switches every spoken default to Turkish (`cue` → "Onayın gerekiyor.", `fallback` → "Tamamlandı.", etc.); `voice: "Yelda"` picks the matching macOS voice. Restart the daemon after changing `voice` (`herdr-voice restart`).
 
 ______________________________________________________________________
 
-## CLI: herdr-voice
+## CLI: `herdr-voice`
 
-Makinenin launchd daemon'unu yönetir (role'e göre: host=router, remote=sink+watcher):
+Manages this machine's launchd daemon (router on a host, sink + watcher on a remote):
 
 ```sh
-herdr-voice start       # daemon'u başlat (launchd)
-herdr-voice stop        # durdur
-herdr-voice restart     # yeniden başlat
-herdr-voice status      # çalışıyor mu + role + enabled + voice + son loglar
+herdr-voice start       # start the daemon (launchd)
+herdr-voice stop        # stop it
+herdr-voice restart     # restart it
+herdr-voice status      # running? + role + enabled + voice + recent logs
 herdr-voice logs        # tail -f ~/.herdr-voice/logs/herdr-voice.log
-herdr-voice enable      # sesi aç (config.enabled=true) + sesli onay
-herdr-voice disable     # sesi kapat (config.enabled=false) + sesli onay
-herdr-voice uninstall   # tamamen kaldır (aşağıya bak)
+herdr-voice enable      # turn voice on  (config.enabled=true)  + spoken confirmation
+herdr-voice disable     # turn voice off (config.enabled=false) + spoken confirmation
+herdr-voice uninstall   # remove everything (see below)
 ```
 
-Örnek:
-
-```sh
-herdr-voice status     # → herdr-voice: çalışıyor | role=host | enabled=true | voice=Yelda (Enhanced)
+```text
+$ herdr-voice status
+herdr-voice: running | role=host | enabled=true | voice=Samantha
 ```
-
-### Kaldırma (uninstall)
-
-```sh
-herdr-voice uninstall        # onay sorar
-herdr-voice uninstall --yes  # sorusuz
-```
-
-Geri alır: daemon durdurulur + launchd plist silinir, CLI (`~/.local/bin/herdr-voice`) ve `~/.herdr-voice/` (config + token dahil) silinir. **Host'ta ayrıca**: Claude hook'ları (`settings.json`'dan herd-voice girdileri; diğerleri korunur) ve herdr plugin kaldırılır. **Elle**: `~/.claude/statusline-command.sh` içindeki `🔈 ses` snippet'i ve herdr `prefix+shift+v` keybind'i.
 
 ______________________________________________________________________
 
-## Claude statusLine göstergesi
+## Claude status line indicator
 
-Status bar'da ses durumunu görmek için (`🔈 ses` açık / `🔇 ses` kapalı), Claude statusLine script'ine bir segment ekle.
+Show the voice state in your Claude Code prompt (`🔈 voice` on / `🔇 voice` off) by adding a segment to your statusLine script.
 
-**A) Bu repodaki segment'i çağır:**
+**A) Call this repo's segment script:**
 
 ```sh
-seg=$("$HOME/Projects/herd-voice/statusline/herd-voice-segment.sh")   # "🔈 ses" / "🔇 ses"
+seg=$("$HOME/Projects/herd-voice/statusline/herd-voice-segment.sh")   # "🔈 voice" / "🔇 voice"
 ```
 
-**B) Ya da kendi statusLine script'ine renkli inline snippet ekle** (`~/.claude/settings.json`'daki `statusLine.command`'in işaret ettiği script'e):
+**B) Or inline a colored snippet** into your own statusLine script (the one `statusLine.command` in `~/.claude/settings.json` points to):
 
 ```bash
 hv=$(jq -r '.enabled // false' "$HOME/.herdr-voice/config.json" 2>/dev/null)
-if [ "$hv" = "true" ]; then printf '  \033[2;32m🔈 ses\033[0m'
-else                        printf '  \033[2;90m🔇 ses\033[0m'; fi
+if [ "$hv" = "true" ]; then printf '  \033[2;32m🔈 voice\033[0m'
+else                        printf '  \033[2;90m🔇 voice\033[0m'; fi
 ```
 
-> statusLine script'i Claude Code'a aittir (repo dışı, ör. `~/.claude/statusline-command.sh`); her refresh'te yeniden çalışır, ekstra reload gerekmez.
+> The statusLine script belongs to Claude Code (outside this repo); it re-runs on every refresh, so no reload is needed.
 
 ______________________________________________________________________
 
-## Günlükler
+## Logs
 
-**Host** (`voice-router`):
-
-```
-~/.herdr-voice/logs/router.out.log   — stdout
-~/.herdr-voice/logs/router.err.log   — stderr
-```
-
-**Remote** (`voice-sink`):
-
-```
-~/.herdr-voice/logs/sink.log   — stdout/stderr
-```
-
-Logları takip et:
+Everything goes to `~/.herdr-voice/logs/herdr-voice.log` (size-rotated, ~1 MB × 5), plus launchd's own `launchd.out.log` / `launchd.err.log`.
 
 ```sh
-# Host
-tail -f ~/.herdr-voice/logs/router.*.log
-
-# Remote
-herdr-voice logs
-# veya
-tail -f ~/.herdr-voice/logs/sink.log
+herdr-voice logs                          # tail -f the app log
+tail -f ~/.herdr-voice/logs/launchd.*.log # raw launchd stdout/stderr
 ```
 
 ______________________________________________________________________
 
-## Sorun giderme
-
-### Router/Sink ayakta mı?
+## Troubleshooting
 
 ```sh
-# Host
+# Is the router/sink up?
 curl -fsS http://127.0.0.1:8973/health        # {"ok":true}
-
-# Remote (sink)
 herdr-voice status
-```
 
-### Plugin action geçmişi (toggle çalıştı mı, çıktı/exit)
+# Is voice enabled?
+jq .enabled ~/.herdr-voice/config.json
 
-```sh
+# Restart after a config/token change
+herdr-voice restart                           # (host: also works via launchctl kickstart)
+
+# Send a manual test phrase
+TOKEN=$(jq -r .token ~/.herdr-voice/config.json)
+curl -X POST http://127.0.0.1:8973/speak \
+  -H "X-Voice-Token: $TOKEN" -H "Content-Type: application/json" \
+  -d '{"text":"Hello from herd-voice"}'
+
+# Watch remote presence (register/deregister) on the host
+tail -f ~/.herdr-voice/logs/herdr-voice.log | grep -i register
+
+# Plugin action history (did toggle run?)
 herdr plugin log list --plugin ensar.herd-voice
 ```
 
-### Ses açık mı?
-
-```sh
-jq .enabled ~/.herdr-voice/config.json
-```
-
-### Daemon'u yeniden başlat (config/token değişince)
-
-Host:
-
-```sh
-launchctl kickstart -k "gui/$(id -u)/dev.ensar.herdr-voice"
-```
-
-Remote:
-
-```sh
-herdr-voice restart
-```
-
-### Manuel sesli test
-
-```sh
-TOKEN=$(jq -r .token ~/.herdr-voice/config.json)
-curl -X POST http://127.0.0.1:8973/speak \
-  -H "X-Voice-Token: $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"text":"Merhaba"}'
-```
-
-### Presence debug (remote register)
-
-Host router log'unda register/deregister geçişlerini izle:
-
-```sh
-tail -f ~/.herdr-voice/logs/router.out.log | grep -i register
-```
-
-### Ses gelmiyorsa kontrol listesi
-
-1. **Host:** `enabled=true` mı? → `jq .enabled ~/.herdr-voice/config.json`
-2. **Host:** Router health → `curl -fsS http://127.0.0.1:8973/health`
-3. **Both:** `say -v Yelda merhaba` test çalışıyor mu
-4. **Both:** Ses seviyesi + speaker
-5. **Remote:** `herdr --remote <remoteHost>` kaydı oldu mu → router log'unda "register" geç
+**No sound?** Walk the checklist: `enabled=true` → router `/health` ok → `say -v <voice> hello` works → volume/output device → (remote) the `herdr --remote` session shows a `register` line in the host log.
 
 ______________________________________________________________________
 
-## Bilinen kısıtlar
+## Uninstall
 
-- `herdr --remote <host>` cmdline imzası herdr versiyonuna göre değişebilir; `herdr --help` kontrol et.
-- Telefon/tablet (thin SSH client) desteklenmez — o cihazda lokal süreç yok.
-- `say` Türkçe kalitesi orta. Sonraki adım: `lib/speak.mjs` arkasına **Piper `tr_TR-dfki`** veya **Orpheus Türkçe** motoru takılabilir.
-- Remote timeout başarısız ise host'ta fallback olarak konuşur.
+```sh
+herdr-voice uninstall        # asks to confirm
+herdr-voice uninstall --yes  # no prompt
+```
+
+Removes: the launchd daemon + plist, the CLI (`~/.local/bin/herdr-voice`), and `~/.herdr-voice/` (config + token). **On a host it also** strips the herd-voice Claude hooks from `settings.json` (others preserved) and uninstalls the herdr plugin. **By hand:** the statusLine snippet and the herdr keybind (`prefix+shift+v`).
 
 ______________________________________________________________________
 
-## Geliştirme
+## Development
 
 ```sh
-node --test          # testler
+node --test    # run the test suite (Node stdlib test runner, zero deps)
 ```
 
-Tasarım ve uygulama planı: `docs/specs/` ve `docs/plans/`.
+## Roadmap
+
+- A pluggable TTS backend behind `lib/speak.mjs` (e.g. [Piper](https://github.com/OHF-Voice/piper1-gpl) or other local neural voices) for higher-quality, cross-platform output.
+- Thin clients (phone/tablet over SSH) aren't supported yet — there's no local process to play audio on them.
+
+## License
+
+[MIT](LICENSE) © Ensar Kovankaya

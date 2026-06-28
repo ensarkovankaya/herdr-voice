@@ -43,10 +43,10 @@ async function main() {
   if (!input.transcript_path) return;
   let jsonl;
   try { jsonl = readFileSync(input.transcript_path, 'utf8'); } catch { return; }
-  const text = summarize(extractLastAssistantText(jsonl));
+  const text = summarize(extractLastAssistantText(jsonl), { fallback: cfg.fallback });
   try {
     await postJson(`http://${cfg.host}:${cfg.port}/speak`, { text }, { token: cfg.token, timeoutMs: cfg.postTimeoutMs });
-  } catch { /* yut */ }
+  } catch { /* swallow */ }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) main().catch(() => {});

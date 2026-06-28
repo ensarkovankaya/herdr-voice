@@ -9,13 +9,13 @@ export function makeLogger({ file, maxBytes = 1_000_000, keep = 5 }) {
         if (existsSync(`${file}.${i}`)) renameSync(`${file}.${i}`, `${file}.${i + 1}`);
       }
       renameSync(file, `${file}.1`);
-    } catch { /* yut */ }
+    } catch { /* swallow */ }
   }
   return function log(level, msg) {
     try {
       mkdirSync(dirname(file), { recursive: true });
       rotate();
       appendFileSync(file, `[${new Date().toISOString()}] [${level}] ${msg}\n`);
-    } catch { /* yut */ }
+    } catch { /* swallow */ }
   };
 }

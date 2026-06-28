@@ -1,11 +1,11 @@
-export function summarize(text, { maxLen = 240, fallback = 'Tamamlandı.' } = {}) {
+export function summarize(text, { maxLen = 240, fallback = 'Done.' } = {}) {
   if (!text || typeof text !== 'string') return fallback;
   let t = text
     .replace(/```[\s\S]*?```/g, ' ')              // fenced code
     .replace(/`[^`]*`/g, ' ')                      // inline code
     .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')         // images
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')       // links -> text
-    .replace(/^\s{0,3}(#{1,6}|>|[-*+]|\d+\.)\s+/gm, '') // başlık/list/quote
+    .replace(/^\s{0,3}(#{1,6}|>|[-*+]|\d+\.)\s+/gm, '') // heading/list/quote
     .replace(/[*_~`]{1,3}/g, '')                   // emphasis markers
     .replace(/\s+/g, ' ')
     .trim();

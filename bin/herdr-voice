@@ -8,33 +8,42 @@ PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 UID_N="$(id -u)"
 
 die(){ echo "herdr-voice: $*" >&2; exit 1; }
-[ -f "$CFG" ] || die "config yok: $CFG (önce install çalıştır)"
+[ -f "$CFG" ] || die "no config: $CFG (run install first)"
 role(){ jq -r '.role // "host"' "$CFG"; }
-voice(){ jq -r '.voice // "Yelda"' "$CFG"; }
+voice(){ jq -r '.voice // "Samantha"' "$CFG"; }
+lang(){ jq -r '.language // "en"' "$CFG"; }
+# Resolve a spoken string: explicit config field wins, else the language pack.
+# $1=config field, $2=English default, $3=Turkish default
+hv_str(){
+  local v; v=$(jq -r --arg k "$1" '.[$k] // empty' "$CFG")
+  if [ -n "$v" ]; then printf '%s' "$v"
+  else case "$(lang)" in tr) printf '%s' "$3" ;; *) printf '%s' "$2" ;; esac; fi
+}
 
 case "${1:-status}" in
   start)   launchctl load -w "$PLIST"; echo "started ($(role))" ;;
   stop)    launchctl unload -w "$PLIST"; echo "stopped" ;;
   restart) launchctl kickstart -k "gui/$UID_N/$LABEL"; echo "restarted" ;;
   status)
-    if launchctl list "$LABEL" >/dev/null 2>&1; then st="çalışıyor"; else st="durdu"; fi
+    if launchctl list "$LABEL" >/dev/null 2>&1; then st="running"; else st="stopped"; fi
     echo "herdr-voice: $st | role=$(role) | enabled=$(jq -r '.enabled // false' "$CFG") | voice=$(voice)"
-    [ "$(role)" = "remote" ] && echo "son kayıt: $(grep -E 'REGISTER|DEREGISTER' "$LOG" 2>/dev/null | tail -1 || echo '-')"
-    echo "--- son log ---"; tail -n 10 "$LOG" 2>/dev/null || echo "(log yok)" ;;
+    [ "$(role)" = "remote" ] && echo "last registration: $(grep -E 'REGISTER|DEREGISTER' "$LOG" 2>/dev/null | tail -1 || echo '-')"
+    echo "--- recent log ---"; tail -n 10 "$LOG" 2>/dev/null || echo "(no log)" ;;
   logs)    tail -f "$LOG" ;;
   enable|disable)
     new=$([ "$1" = enable ] && echo true || echo false)
     tmp=$(mktemp); jq --argjson e "$new" '.enabled=$e' "$CFG" > "$tmp" && mv -f "$tmp" "$CFG"
     printf '[%s] [INFO] %s (cli)\n' "$(date -u +%FT%TZ)" "$([ "$new" = true ] && echo ENABLE || echo DISABLE)" >> "$LOG"
-    say -v "$(voice)" "$([ "$new" = true ] && echo 'Ses açıldı' || echo 'Ses kapandı')" 2>/dev/null || true
+    msg=$([ "$new" = true ] && hv_str voiceOnText 'Voice on.' 'Ses açıldı.' || hv_str voiceOffText 'Voice off.' 'Ses kapandı.')
+    say -v "$(voice)" "$msg" 2>/dev/null || true
     echo "enabled=$new" ;;
   uninstall)
     r="$(role)"
     if [ "${2:-}" != "--yes" ]; then
-      extra=""; if [ "$r" = host ]; then extra=" + Claude hook + herdr plugin"; fi
-      printf "herdr-voice kaldırılsın mı? launchd + CLI + ~/.herdr-voice (token dahil)%s [y/N] " "$extra"
+      extra=""; if [ "$r" = host ]; then extra=" + Claude hooks + herdr plugin"; fi
+      printf "Remove herdr-voice? launchd + CLI + ~/.herdr-voice (incl. token)%s [y/N] " "$extra"
       read -r ans || ans=""
-      case "$ans" in y|Y|yes|evet) ;; *) echo "iptal"; exit 0 ;; esac
+      case "$ans" in y|Y|yes) ;; *) echo "cancelled"; exit 0 ;; esac
     fi
     launchctl unload -w "$PLIST" 2>/dev/null || true
     rm -f "$PLIST"
@@ -48,10 +57,10 @@ case "${1:-status}" in
           "$S" > "$tmp" && mv -f "$tmp" "$S"
       fi
       herdr plugin uninstall ensar.herd-voice >/dev/null 2>&1 || herdr plugin unlink ensar.herd-voice >/dev/null 2>&1 || true
-      echo "Not: statusLine snippet'i + herdr keybind'i (prefix+shift+v) elle kaldır."
+      echo "Note: remove the statusLine snippet and the herdr keybind (prefix+shift+v) by hand."
     fi
     rm -rf "$APP"
     rm -f "$HOME/.local/bin/herdr-voice"
-    echo "herdr-voice kaldırıldı (role=$r)." ;;
-  *) die "kullanım: herdr-voice {start|stop|restart|status|logs|enable|disable|uninstall}" ;;
+    echo "herdr-voice removed (role=$r)." ;;
+  *) die "usage: herdr-voice {start|stop|restart|status|logs|enable|disable|uninstall}" ;;
 esac

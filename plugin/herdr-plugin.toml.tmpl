@@ -2,20 +2,20 @@ id = "ensar.herd-voice"
 name = "herd-voice"
 version = "0.1.0"
 min_herdr_version = "0.7.0"
-description = "Aktif cihazda Claude sesli özet (say -v Yelda)."
+description = "Speak Claude Code summaries on your active device (macOS say)."
 platforms = ["macos"]
 
 [[actions]]
 id = "toggle"
-title = "herd-voice: ses aç/kapa"
+title = "herd-voice: toggle voice"
 command = ["bash", "actions/toggle.sh"]
 
 [[actions]]
 id = "enable"
-title = "herd-voice: ses aç"
+title = "herd-voice: voice on"
 command = ["bash", "actions/toggle.sh", "on"]
 
 [[actions]]
 id = "disable"
-title = "herd-voice: ses kapa"
+title = "herd-voice: voice off"
 command = ["bash", "actions/toggle.sh", "off"]

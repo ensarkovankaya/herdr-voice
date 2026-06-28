@@ -12,33 +12,33 @@ function start(handler) {
 }
 const flush = () => new Promise((r) => setImmediate(r));
 const noLog = () => {};
-const cfgOf = (over = {}) => () => ({ token: 'T', voice: 'Yelda', remoteTtlMs: 1000, ...over });
+const cfgOf = (over = {}) => () => ({ token: 'T', voice: 'Samantha', remoteTtlMs: 1000, ...over });
 
-test('remote yok → lokal speak (fresh voice)', async () => {
+test('no remote → local speak (fresh voice)', async () => {
   const spoken = [];
   const { s, port } = await start(makeRouter({
-    getConfig: cfgOf({ voice: 'Yelda (Enhanced)' }), speak: (t, o) => spoken.push([t, o.voice]),
+    getConfig: cfgOf({ voice: 'Alex' }), speak: (t, o) => spoken.push([t, o.voice]),
     forward: () => Promise.resolve(), now: () => 0, log: noLog }));
-  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'lokal' }, { token: 'T' });
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'local' }, { token: 'T' });
   await flush();
-  assert.deepEqual(spoken, [['lokal', 'Yelda (Enhanced)']]);
+  assert.deepEqual(spoken, [['local', 'Alex']]);
   s.close();
 });
 
-test('register → forward; lokal yok', async () => {
+test('register → forward; no local', async () => {
   const spoken = [], fwd = [];
   const { s, port } = await start(makeRouter({
     getConfig: cfgOf(), speak: (t) => spoken.push(t),
     forward: (ip, p, t) => { fwd.push([ip, p, t]); return Promise.resolve(); }, now: () => 0, log: noLog }));
   await postJson(`http://127.0.0.1:${port}/register`, { ip: '1.2.3.4' }, { token: 'T' });
-  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'uzak' }, { token: 'T' });
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'remote' }, { token: 'T' });
   await flush();
-  assert.deepEqual(fwd, [['1.2.3.4', 8973, 'uzak']]);
+  assert.deepEqual(fwd, [['1.2.3.4', 8973, 'remote']]);
   assert.equal(spoken.length, 0);
   s.close();
 });
 
-test('forward hata → remote temizlenir + lokal fallback', async () => {
+test('forward error → registration cleared + local fallback', async () => {
   const spoken = [];
   const { s, port } = await start(makeRouter({
     getConfig: cfgOf(), speak: (t) => spoken.push(t),
@@ -50,7 +50,7 @@ test('forward hata → remote temizlenir + lokal fallback', async () => {
   s.close();
 });
 
-test('expired registration → lokal', async () => {
+test('expired registration → local', async () => {
   const spoken = []; let t = 0;
   const { s, port } = await start(makeRouter({
     getConfig: cfgOf({ remoteTtlMs: 100 }), speak: (x) => spoken.push(x),
@@ -63,7 +63,7 @@ test('expired registration → lokal', async () => {
   s.close();
 });
 
-test('yanlış token → 401', async () => {
+test('wrong token → 401', async () => {
   const { s, port } = await start(makeRouter({
     getConfig: cfgOf(), speak: () => {}, forward: () => Promise.resolve(), now: () => 0, log: noLog }));
   const r = await postJson(`http://127.0.0.1:${port}/speak`, { text: 'x' }, { token: 'NO' });

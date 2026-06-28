@@ -7,19 +7,19 @@ import { extractLastAssistantText } from '../src/speak-summary.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-test('tool_use-only son satırı atlar, metinli son assistant mesajını alır', () => {
+test('skips a tool_use-only last line, takes the last assistant text message', () => {
   const jsonl = readFileSync(join(here, 'fixtures', 'transcript.jsonl'), 'utf8');
-  assert.equal(extractLastAssistantText(jsonl), 'Testleri çalıştırdım ve hepsi geçti.');
+  assert.equal(extractLastAssistantText(jsonl), 'I ran the tests and they all passed.');
 });
 
-test('string content ve bozuk satırlar', () => {
+test('string content and malformed lines', () => {
   const jsonl = [
-    'BOZUK SATIR',
-    JSON.stringify({ type: 'assistant', message: { role: 'assistant', content: 'Düz metin cevap.' } }),
+    'MALFORMED LINE',
+    JSON.stringify({ type: 'assistant', message: { role: 'assistant', content: 'Plain text reply.' } }),
   ].join('\n');
-  assert.equal(extractLastAssistantText(jsonl), 'Düz metin cevap.');
+  assert.equal(extractLastAssistantText(jsonl), 'Plain text reply.');
 });
 
-test('assistant yoksa boş string', () => {
+test('no assistant message → empty string', () => {
   assert.equal(extractLastAssistantText('{"type":"user","message":{"role":"user","content":[]}}'), '');
 });

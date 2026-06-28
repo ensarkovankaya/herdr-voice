@@ -19,10 +19,10 @@ async function main() {
   const cfg = loadConfig();
   if (!cfg.enabled) return;
   let input = {};
-  try { input = JSON.parse(await readStdin()); } catch { /* yine de sabit cue */ }
+  try { input = JSON.parse(await readStdin()); } catch { /* still send the fixed cue */ }
   try {
     await postJson(`http://${cfg.host}:${cfg.port}/speak`, { text: cueFor(input, cfg) }, { token: cfg.token, timeoutMs: cfg.postTimeoutMs });
-  } catch { /* yut */ }
+  } catch { /* swallow */ }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) main().catch(() => {});
