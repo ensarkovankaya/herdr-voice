@@ -1,54 +1,59 @@
 import http from 'node:http';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from './lib/config.mjs';
 import { readJsonBody, sendJson, postJson } from './lib/http.mjs';
 import { speak as realSpeak } from './lib/speak.mjs';
+import { makeLogger } from './lib/logger.mjs';
 
-export function makeRouter({ token, voice, ttlMs, speak, forward, now = Date.now }) {
+export function makeRouter({ getConfig, speak, forward, now = Date.now, log }) {
   let remote = null; // {ip, port, expiresAt}
 
-  function route(text) {
+  function route(text, cfg) {
     if (remote && now() < remote.expiresAt) {
       const { ip, port } = remote;
+      log('INFO', `FORWARD "${(text || '').slice(0, 120)}" -> ${ip}:${port}`);
       Promise.resolve()
         .then(() => forward(ip, port, text))
-        .catch(() => { remote = null; speak(text, { voice }); });
+        .catch(() => { remote = null; log('WARN', `FALLBACK local (forward ${ip}:${port} failed)`); speak(text, { voice: cfg.voice }); });
     } else {
-      speak(text, { voice });
+      log('INFO', `SPEAK "${(text || '').slice(0, 120)}" (local)`);
+      speak(text, { voice: cfg.voice });
     }
   }
 
   return async (req, res) => {
     if (req.method === 'GET' && req.url === '/health') return sendJson(res, 200, { ok: true });
     if (req.method !== 'POST') return sendJson(res, 404, { error: 'not found' });
-    if ((req.headers['x-voice-token'] || '') !== token) return sendJson(res, 401, { error: 'unauthorized' });
+    const cfg = getConfig();
+    if ((req.headers['x-voice-token'] || '') !== cfg.token) return sendJson(res, 401, { error: 'unauthorized' });
     let body;
     try { body = await readJsonBody(req); } catch { return sendJson(res, 400, { error: 'bad json' }); }
 
     if (req.url === '/register') {
       if (!body.ip) return sendJson(res, 400, { error: 'ip required' });
-      remote = { ip: body.ip, port: body.port || 8973, expiresAt: now() + (body.ttlMs || ttlMs) };
+      remote = { ip: body.ip, port: body.port || 8973, expiresAt: now() + (body.ttlMs || cfg.remoteTtlMs) };
+      log('INFO', `REGISTER ${remote.ip}:${remote.port}`);
       return sendJson(res, 200, { ok: true, remote: { ip: remote.ip, port: remote.port } });
     }
-    if (req.url === '/deregister') { remote = null; return sendJson(res, 200, { ok: true }); }
-    if (req.url === '/speak') { sendJson(res, 202, { ok: true }); route(body.text); return; }
+    if (req.url === '/deregister') { remote = null; log('INFO', 'DEREGISTER'); return sendJson(res, 200, { ok: true }); }
+    if (req.url === '/speak') { sendJson(res, 202, { ok: true }); route(body.text, cfg); return; }
     return sendJson(res, 404, { error: 'not found' });
   };
 }
 
 function main() {
-  const cfg = loadConfig();
+  const logFile = join(homedir(), '.herdr-voice', 'logs', 'herdr-voice.log');
+  const log = makeLogger({ file: logFile });
   const bind = process.env.HERD_VOICE_BIND || '0.0.0.0';
+  const cfg0 = loadConfig();
   const forward = (ip, port, text) =>
-    postJson(`http://${ip}:${port}/speak`, { text }, { token: cfg.token, timeoutMs: cfg.forwardTimeoutMs })
-      .then((r) => { if (r.status >= 300) throw new Error(`sink status ${r.status}`); });
-  const handler = makeRouter({
-    token: cfg.token, voice: cfg.voice, ttlMs: cfg.remoteTtlMs,
-    speak: realSpeak, forward, now: Date.now,
-  });
-  http.createServer(handler).listen(cfg.port, bind, () => {
-    console.log(`voice-router listening ${bind}:${cfg.port}`);
-  });
+    postJson(`http://${ip}:${port}/speak`, { text }, { token: loadConfig().token, timeoutMs: loadConfig().forwardTimeoutMs })
+      .then((r) => { if (r.status >= 300) throw new Error(`sink ${r.status}`); });
+  const handler = makeRouter({ getConfig: loadConfig, speak: realSpeak, forward, now: Date.now, log });
+  http.createServer(handler).listen(cfg0.port, bind, () => log('INFO', `START voice-router ${bind}:${cfg0.port}`));
+  process.on('SIGTERM', () => { log('INFO', 'STOP voice-router'); process.exit(0); });
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) main();
