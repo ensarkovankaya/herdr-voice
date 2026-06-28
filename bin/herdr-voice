@@ -28,5 +28,30 @@ case "${1:-status}" in
     printf '[%s] [INFO] %s (cli)\n' "$(date -u +%FT%TZ)" "$([ "$new" = true ] && echo ENABLE || echo DISABLE)" >> "$LOG"
     say -v "$(voice)" "$([ "$new" = true ] && echo 'Ses açıldı' || echo 'Ses kapandı')" 2>/dev/null || true
     echo "enabled=$new" ;;
-  *) die "kullanım: herdr-voice {start|stop|restart|status|logs|enable|disable}" ;;
+  uninstall)
+    r="$(role)"
+    if [ "${2:-}" != "--yes" ]; then
+      extra=""; if [ "$r" = host ]; then extra=" + Claude hook + herdr plugin"; fi
+      printf "herdr-voice kaldırılsın mı? launchd + CLI + ~/.herdr-voice (token dahil)%s [y/N] " "$extra"
+      read -r ans || ans=""
+      case "$ans" in y|Y|yes|evet) ;; *) echo "iptal"; exit 0 ;; esac
+    fi
+    launchctl unload -w "$PLIST" 2>/dev/null || true
+    rm -f "$PLIST"
+    if [ "$r" = host ]; then
+      S="$HOME/.claude/settings.json"
+      if [ -f "$S" ]; then
+        tmp="$(mktemp)"
+        jq '.hooks = (.hooks // {})
+          | .hooks.Stop = ((.hooks.Stop // []) | map(select(((.hooks[]?.command) // "") | test("herd-?voice") | not)))
+          | .hooks.Notification = ((.hooks.Notification // []) | map(select(((.hooks[]?.command) // "") | test("herd-?voice") | not)))' \
+          "$S" > "$tmp" && mv -f "$tmp" "$S"
+      fi
+      herdr plugin uninstall ensar.herd-voice >/dev/null 2>&1 || herdr plugin unlink ensar.herd-voice >/dev/null 2>&1 || true
+      echo "Not: statusLine snippet'i + herdr keybind'i (prefix+shift+v) elle kaldır."
+    fi
+    rm -rf "$APP"
+    rm -f "$HOME/.local/bin/herdr-voice"
+    echo "herdr-voice kaldırıldı (role=$r)." ;;
+  *) die "kullanım: herdr-voice {start|stop|restart|status|logs|enable|disable|uninstall}" ;;
 esac

@@ -38,7 +38,7 @@ ______________________________________________________________________
 | `src/notify-cue.mjs`                       | **Claude Notification hook.** Onay/girdi beklenirken sabit kısa ipucu ("Onayın gerekiyor.").                                                                                        |
 | `src/lib/summarize.mjs`                    | Markdown/kod temizler, ≤240 karaktere ilk cümle(ler)e indirger, boş/kod-only ise "Tamamlandı."                                                                                      |
 | `src/lib/{config,http,speak}.mjs`          | config yükleyici · küçük HTTP yardımcıları · seri `say` kuyruğu.                                                                                                                    |
-| `bin/herdr-voice`                          | **CLI:** `start/stop/restart/status/logs/enable/disable` — makinenin herdr-voice daemon'unu yönetir.                                                                                |
+| `bin/herdr-voice`                          | **CLI:** `start/stop/restart/status/logs/enable/disable/uninstall` — makinenin herdr-voice daemon'unu yönetir.                                                                      |
 | `plugin/`                                  | **herdr plugin** (`ensar.herd-voice`): toggle/enable/disable action'ları + durum (host öğünde).                                                                                     |
 | `launchd/dev.ensar.herdr-voice.plist.tmpl` | voice-sink (remote) ve voice-router (host) için launchd şablonu.                                                                                                                    |
 
@@ -136,24 +136,33 @@ ______________________________________________________________________
 
 ## CLI: herdr-voice
 
-Remote cihazda launchd daemon'unu yönetir:
+Makinenin launchd daemon'unu yönetir (role'e göre: host=router, remote=sink+watcher):
 
 ```sh
-herdr-voice start       # voice-sink başlat
-herdr-voice stop        # voice-sink durdur
-herdr-voice restart     # voice-sink'i yeniden başlat
-herdr-voice status      # status + PID + log path
-herdr-voice logs        # tail -f ~/.herdr-voice/logs/sink.log (varsa)
-herdr-voice enable      # enabled=true yapıp sink'i yeniden başlat
-herdr-voice disable     # enabled=false yapıp sink'i yeniden başlat
+herdr-voice start       # daemon'u başlat (launchd)
+herdr-voice stop        # durdur
+herdr-voice restart     # yeniden başlat
+herdr-voice status      # çalışıyor mu + role + enabled + voice + son loglar
+herdr-voice logs        # tail -f ~/.herdr-voice/logs/herdr-voice.log
+herdr-voice enable      # sesi aç (config.enabled=true) + sesli onay
+herdr-voice disable     # sesi kapat (config.enabled=false) + sesli onay
+herdr-voice uninstall   # tamamen kaldır (aşağıya bak)
 ```
 
 Örnek:
 
 ```sh
-herdr-voice status     # → "dev.ensar.herdr-voice (voice-sink) running, PID 12345, enabled=true"
-herdr-voice logs       # → sink.log'un son satırlarını göster
+herdr-voice status     # → herdr-voice: çalışıyor | role=host | enabled=true | voice=Yelda (Enhanced)
 ```
+
+### Kaldırma (uninstall)
+
+```sh
+herdr-voice uninstall        # onay sorar
+herdr-voice uninstall --yes  # sorusuz
+```
+
+Geri alır: daemon durdurulur + launchd plist silinir, CLI (`~/.local/bin/herdr-voice`) ve `~/.herdr-voice/` (config + token dahil) silinir. **Host'ta ayrıca**: Claude hook'ları (`settings.json`'dan herd-voice girdileri; diğerleri korunur) ve herdr plugin kaldırılır. **Elle**: `~/.claude/statusline-command.sh` içindeki `🔈 ses` snippet'i ve herdr `prefix+shift+v` keybind'i.
 
 ______________________________________________________________________
 
