@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+APP="$HOME/.herdr-voice"
+CFG="$APP/config.json"
+LOG="$APP/logs/herdr-voice.log"
+LABEL="dev.ensar.herdr-voice"
+PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+UID_N="$(id -u)"
+
+die(){ echo "herdr-voice: $*" >&2; exit 1; }
+[ -f "$CFG" ] || die "config yok: $CFG (önce install çalıştır)"
+role(){ jq -r '.role // "host"' "$CFG"; }
+voice(){ jq -r '.voice // "Yelda"' "$CFG"; }
+
+case "${1:-status}" in
+  start)   launchctl load -w "$PLIST"; echo "started ($(role))" ;;
+  stop)    launchctl unload -w "$PLIST"; echo "stopped" ;;
+  restart) launchctl kickstart -k "gui/$UID_N/$LABEL"; echo "restarted" ;;
+  status)
+    if launchctl list 2>/dev/null | grep -q "$LABEL"; then st="çalışıyor"; else st="durdu"; fi
+    echo "herdr-voice: $st | role=$(role) | enabled=$(jq -r '.enabled // false' "$CFG") | voice=$(voice)"
+    [ "$(role)" = "remote" ] && echo "son kayıt: $(grep -E 'REGISTER|DEREGISTER' "$LOG" 2>/dev/null | tail -1 || echo '-')"
+    echo "--- son log ---"; tail -n 10 "$LOG" 2>/dev/null || echo "(log yok)" ;;
+  logs)    tail -f "$LOG" ;;
+  enable|disable)
+    new=$([ "$1" = enable ] && echo true || echo false)
+    tmp=$(mktemp); jq --argjson e "$new" '.enabled=$e' "$CFG" > "$tmp" && mv -f "$tmp" "$CFG"
+    printf '[%s] [INFO] %s (cli)\n' "$(date -u +%FT%TZ)" "$([ "$new" = true ] && echo ENABLE || echo DISABLE)" >> "$LOG"
+    say -v "$(voice)" "$([ "$new" = true ] && echo 'Ses açıldı' || echo 'Ses kapandı')" 2>/dev/null || true
+    echo "enabled=$new" ;;
+  *) die "kullanım: herdr-voice {start|stop|restart|status|logs|enable|disable}" ;;
+esac
