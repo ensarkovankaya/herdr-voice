@@ -2,17 +2,17 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>Label</key><string>dev.ensar.herd-voice.router</string>
+  <key>Label</key><string>dev.ensar.herdr-voice</string>
   <key>ProgramArguments</key>
   <array>
     <string>@NODE@</string>
-    <string>@ROOT@/src/voice-router.mjs</string>
+    <string>@APP@/src/@DAEMON@</string>
   </array>
   <key>EnvironmentVariables</key>
   <dict><key>HERD_VOICE_BIND</key><string>0.0.0.0</string></dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
-  <key>StandardOutPath</key><string>@ROOT@/router.out.log</string>
-  <key>StandardErrorPath</key><string>@ROOT@/router.err.log</string>
+  <key>StandardOutPath</key><string>@APP@/logs/launchd.out.log</string>
+  <key>StandardErrorPath</key><string>@APP@/logs/launchd.err.log</string>
 </dict>
 </plist>
