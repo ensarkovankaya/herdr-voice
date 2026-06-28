@@ -48,9 +48,11 @@ function main() {
   const log = makeLogger({ file: logFile });
   const bind = process.env.HERD_VOICE_BIND || '0.0.0.0';
   const cfg0 = loadConfig();
-  const forward = (ip, port, text) =>
-    postJson(`http://${ip}:${port}/speak`, { text }, { token: loadConfig().token, timeoutMs: loadConfig().forwardTimeoutMs })
+  const forward = (ip, port, text) => {
+    const c = loadConfig();
+    return postJson(`http://${ip}:${port}/speak`, { text }, { token: c.token, timeoutMs: c.forwardTimeoutMs })
       .then((r) => { if (r.status >= 300) throw new Error(`sink ${r.status}`); });
+  };
   const handler = makeRouter({ getConfig: loadConfig, speak: realSpeak, forward, now: Date.now, log });
   http.createServer(handler).listen(cfg0.port, bind, () => log('INFO', `START voice-router ${bind}:${cfg0.port}`));
   process.on('SIGTERM', () => { log('INFO', 'STOP voice-router'); process.exit(0); });
