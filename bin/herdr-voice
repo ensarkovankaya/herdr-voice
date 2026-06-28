@@ -17,7 +17,7 @@ case "${1:-status}" in
   stop)    launchctl unload -w "$PLIST"; echo "stopped" ;;
   restart) launchctl kickstart -k "gui/$UID_N/$LABEL"; echo "restarted" ;;
   status)
-    if launchctl list 2>/dev/null | grep -q "$LABEL"; then st="çalışıyor"; else st="durdu"; fi
+    if launchctl list "$LABEL" >/dev/null 2>&1; then st="çalışıyor"; else st="durdu"; fi
     echo "herdr-voice: $st | role=$(role) | enabled=$(jq -r '.enabled // false' "$CFG") | voice=$(voice)"
     [ "$(role)" = "remote" ] && echo "son kayıt: $(grep -E 'REGISTER|DEREGISTER' "$LOG" 2>/dev/null | tail -1 || echo '-')"
     echo "--- son log ---"; tail -n 10 "$LOG" 2>/dev/null || echo "(log yok)" ;;
