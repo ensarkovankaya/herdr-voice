@@ -8,6 +8,8 @@ const DEFAULTS = {
   port: 8973,
   voice: 'Yelda',
   enabled: false,
+  role: 'host',
+  remoteHost: '',
   remoteTtlMs: 3_600_000,
   forwardTimeoutMs: 1500,
   postTimeoutMs: 1500,
@@ -16,7 +18,7 @@ const DEFAULTS = {
 
 export function configPath() {
   return process.env.HERD_VOICE_CONFIG
-    || join(homedir(), '.config', 'herd-voice', 'config.json');
+    || join(homedir(), '.herdr-voice', 'config.json');
 }
 
 export function loadConfig() {
