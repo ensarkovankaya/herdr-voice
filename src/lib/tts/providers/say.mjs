@@ -1,21 +1,15 @@
-export function makeSayProvider({ spawn }) {
+import { spawn as realSpawn } from 'node:child_process';
+
+export function makeSayProvider({ spawn = realSpawn } = {}) {
   return {
     name: 'say',
-    async speak(text, { cfg }) {
+    speak(text, { cfg }) {
       return new Promise((resolve) => {
-        try {
-          const voice = cfg?.tts?.say?.voice || '';
-          const args = voice ? ['-v', voice, text] : [text];
-          const child = spawn('say', args);
-
-          const onClose = () => resolve();
-          const onError = () => resolve();
-
-          child.on('close', onClose);
-          child.on('error', onError);
-        } catch {
-          resolve();
-        }
+        let child;
+        try { child = spawn('say', ['-v', cfg.tts.say.voice, text], { stdio: 'ignore' }); }
+        catch { return resolve(); }
+        child.on('error', () => resolve());
+        child.on('close', () => resolve());
       });
     },
   };
