@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from './lib/config.mjs';
 import { readJsonBody, sendJson } from './lib/http.mjs';
-import { speak as realSpeak } from './lib/speak.mjs';
+import { makeSpeaker } from './lib/tts/index.mjs';
 import { makeLogger, metaTag } from './lib/logger.mjs';
 import { startPresenceWatcher } from './lib/presence.mjs';
 
@@ -19,7 +19,7 @@ export function makeSinkHandler({ getConfig, speak, log }) {
       if (!cfg.enabled) { log('INFO', 'SPEAK skipped (disabled)'); return sendJson(res, 200, { skipped: true }); }
       sendJson(res, 202, { ok: true });
       log('INFO', `SPEAK${metaTag({ sessionId: body.sessionId, pane: body.pane })} "${(body.text || '').slice(0, 200)}"`);
-      speak(body.text, { voice: cfg.voice });
+      speak(body.text);
       return;
     }
     sendJson(res, 404, { error: 'not found' });
@@ -31,7 +31,7 @@ function main() {
   const log = makeLogger({ file: logFile });
   const bind = process.env.HERD_VOICE_BIND || '0.0.0.0';
   const cfg0 = loadConfig();
-  const handler = makeSinkHandler({ getConfig: loadConfig, speak: realSpeak, log });
+  const handler = makeSinkHandler({ getConfig: loadConfig, speak: makeSpeaker({ getConfig: loadConfig, log }), log });
   http.createServer(handler).listen(cfg0.port, bind, () => log('INFO', `START voice-sink ${bind}:${cfg0.port}`));
   startPresenceWatcher({ getConfig: loadConfig, log });
   process.on('SIGTERM', () => { log('INFO', 'STOP voice-sink'); process.exit(0); });

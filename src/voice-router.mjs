@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from './lib/config.mjs';
 import { readJsonBody, sendJson, postJson } from './lib/http.mjs';
-import { speak as realSpeak } from './lib/speak.mjs';
+import { makeSpeaker } from './lib/tts/index.mjs';
 import { makeLogger, metaTag } from './lib/logger.mjs';
 
 export function makeRouter({ getConfig, speak, forward, now = Date.now, log }) {
@@ -17,10 +17,10 @@ export function makeRouter({ getConfig, speak, forward, now = Date.now, log }) {
       log('INFO', `FORWARD${tag} "${(text || '').slice(0, 120)}" -> ${ip}:${port}`);
       Promise.resolve()
         .then(() => forward(ip, port, text, meta))
-        .catch(() => { remote = null; log('WARN', `FALLBACK local${tag} (forward ${ip}:${port} failed)`); speak(text, { voice: cfg.voice }); });
+        .catch(() => { remote = null; log('WARN', `FALLBACK local${tag} (forward ${ip}:${port} failed)`); speak(text); });
     } else {
       log('INFO', `SPEAK${tag} "${(text || '').slice(0, 120)}" (local)`);
-      speak(text, { voice: cfg.voice });
+      speak(text);
     }
   }
 
@@ -54,7 +54,7 @@ function main() {
     return postJson(`http://${ip}:${port}/speak`, { text, sessionId: meta.sessionId, pane: meta.pane }, { token: c.token, timeoutMs: c.forwardTimeoutMs })
       .then((r) => { if (r.status >= 300) throw new Error(`sink ${r.status}`); });
   };
-  const handler = makeRouter({ getConfig: loadConfig, speak: realSpeak, forward, now: Date.now, log });
+  const handler = makeRouter({ getConfig: loadConfig, speak: makeSpeaker({ getConfig: loadConfig, log }), forward, now: Date.now, log });
   http.createServer(handler).listen(cfg0.port, bind, () => log('INFO', `START voice-router ${bind}:${cfg0.port}`));
   process.on('SIGTERM', () => { log('INFO', 'STOP voice-router'); process.exit(0); });
 }

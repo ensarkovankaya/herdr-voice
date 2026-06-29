@@ -14,14 +14,14 @@ const flush = () => new Promise((r) => setImmediate(r));
 const noLog = () => {};
 const cfgOf = (over = {}) => () => ({ token: 'T', voice: 'Samantha', remoteTtlMs: 1000, ...over });
 
-test('no remote → local speak (fresh voice)', async () => {
+test('no remote → local speak', async () => {
   const spoken = [];
   const { s, port } = await start(makeRouter({
-    getConfig: cfgOf({ voice: 'Alex' }), speak: (t, o) => spoken.push([t, o.voice]),
+    getConfig: cfgOf({ voice: 'Alex' }), speak: (t) => spoken.push(t),
     forward: () => Promise.resolve(), now: () => 0, log: noLog }));
   await postJson(`http://127.0.0.1:${port}/speak`, { text: 'local' }, { token: 'T' });
   await flush();
-  assert.deepEqual(spoken, [['local', 'Alex']]);
+  assert.deepEqual(spoken, ['local']);
   s.close();
 });
 

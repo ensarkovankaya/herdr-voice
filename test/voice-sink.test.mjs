@@ -12,13 +12,13 @@ function start(handler) {
 }
 const noLog = () => {};
 
-test('valid token + enabled → 202 and speak with fresh voice', async () => {
+test('valid token + enabled → 202 and speak called', async () => {
   const spoken = [];
-  const getConfig = () => ({ token: 'T', voice: 'Alex', enabled: true });
-  const { s, port } = await start(makeSinkHandler({ getConfig, speak: (t, o) => spoken.push([t, o.voice]), log: noLog }));
+  const getConfig = () => ({ token: 'T', enabled: true });
+  const { s, port } = await start(makeSinkHandler({ getConfig, speak: (t) => spoken.push(t), log: noLog }));
   const r = await postJson(`http://127.0.0.1:${port}/speak`, { text: 'hello' }, { token: 'T' });
   assert.equal(r.status, 202);
-  assert.deepEqual(spoken, [['hello', 'Alex']]);
+  assert.deepEqual(spoken, ['hello']);
   s.close();
 });
 
