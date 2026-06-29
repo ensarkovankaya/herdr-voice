@@ -9,7 +9,6 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NODE="$(command -v node)"
 APP="$HOME/.herdr-voice"
 CFG="$APP/config.json"
-OLD_CFG="$HOME/.config/herd-voice/config.json"
 SETTINGS="$HOME/.claude/settings.json"
 LABEL="dev.herdr-voice"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
@@ -38,13 +37,9 @@ cp -R "$ROOT/src/." "$APP/src/"
 if [ "$MODE" = host ]; then
   DAEMON="voice-router.mjs"
   if [ ! -f "$CFG" ]; then
-    if [ -f "$OLD_CFG" ]; then
-      TOKEN=$(jq -r '.token // ""' "$OLD_CFG"); VOICE=$(jq -r '.voice // "Samantha"' "$OLD_CFG"); EN=$(jq -r '.enabled // true' "$OLD_CFG")
-    else TOKEN=""; VOICE="Samantha"; EN=true; fi
-    [ -n "$TOKEN" ] || TOKEN="$(openssl rand -hex 16)"
-    jq -n --arg t "$TOKEN" --arg v "$VOICE" --argjson en "$EN" \
-      '{token:$t, host:"127.0.0.1", port:8973, language:"en", voice:$v, enabled:$en, role:"host", remoteHost:"", remoteTtlMs:3600000, forwardTimeoutMs:1500, postTimeoutMs:1500}' > "$CFG"
-    echo "config written/migrated: $CFG"
+    jq -n --arg t "$(openssl rand -hex 16)" \
+      '{token:$t, host:"127.0.0.1", port:8973, language:"en", voice:"Samantha", enabled:true, role:"host", remoteHost:"", remoteTtlMs:3600000, forwardTimeoutMs:1500, postTimeoutMs:1500}' > "$CFG"
+    echo "config written: $CFG"
   else
     # patch a missing token + guarantee role=host
     if [ -z "$(jq -r '.token // ""' "$CFG")" ]; then TOKEN="$(openssl rand -hex 16)"; tmp=$(mktemp); jq --arg t "$TOKEN" '.token=$t' "$CFG" > "$tmp" && mv "$tmp" "$CFG"; fi
@@ -66,9 +61,6 @@ mkdir -p "$HOME/.local/bin"; cp "$ROOT/bin/herdr-voice" "$BIN"; chmod +x "$BIN"
 echo "CLI: $BIN"
 
 # 4) launchd agent (shared template, role-specific daemon)
-# migrate: drop the previously-labeled agent (label renamed dev.ensar.herdr-voice -> dev.herdr-voice)
-launchctl unload "$HOME/Library/LaunchAgents/dev.ensar.herdr-voice.plist" 2>/dev/null || true
-rm -f "$HOME/Library/LaunchAgents/dev.ensar.herdr-voice.plist"
 sed -e "s#@NODE@#$NODE#g" -e "s#@APP@#$APP#g" -e "s#@DAEMON@#$DAEMON#g" \
   "$ROOT/launchd/dev.herdr-voice.plist.tmpl" > "$PLIST"
 launchctl unload "$PLIST" 2>/dev/null || true
@@ -78,7 +70,7 @@ launchctl load -w "$PLIST"; sleep 1
 if [ "$MODE" = host ]; then
   curl -fsS "http://127.0.0.1:8973/health" >/dev/null 2>&1 && echo "router up" || echo "router health FAIL"
 
-  # Claude hooks -> ~/.herdr-voice/src (idempotent; old herd-voice entries removed first)
+  # Claude hooks -> ~/.herdr-voice/src (idempotent; existing herd-voice entries removed first)
   CMD_STOP="\"$NODE\" \"$APP/src/speak-summary.mjs\""
   CMD_NOTIFY="\"$NODE\" \"$APP/src/notify-cue.mjs\""
   [ -f "$SETTINGS" ] || echo '{}' > "$SETTINGS"
@@ -95,19 +87,11 @@ if [ "$MODE" = host ]; then
   # plugin (render manifest + link); toggle reads the new config
   sed -e "s#@ROOT@#$ROOT#g" "$ROOT/plugin/herdr-plugin.toml.tmpl" > "$ROOT/plugin/herdr-plugin.toml"
   herdr plugin link "$ROOT/plugin" >/dev/null 2>&1 || echo "warning: herdr plugin link failed"
-
-  # drop the old v1 router agent
-  launchctl unload "$HOME/Library/LaunchAgents/dev.ensar.herd-voice.router.plist" 2>/dev/null || true
-  rm -f "$HOME/Library/LaunchAgents/dev.ensar.herd-voice.router.plist"
 fi
 
-# 6) clean up old v1 config (shared)
-rm -rf "$HOME/.config/herd-voice"
-echo "cleaned up old v1"
-
-# 7) done
+# 6) done
 if [ "$MODE" = host ]; then
-  echo "Done. Check with 'herdr-voice status'. The statusLine snippet + keybind from v1 still apply."
+  echo "Done. Check with 'herdr-voice status'. Add the statusLine snippet + keybind from the README if you want them."
 else
   echo "Done (role=remote, host=$HOST_IP, remoteHost='${RHOST:-any}'). Check with 'herdr-voice status'."
   echo "Usage: herdr --remote ${RHOST:-<host>}  (audio is routed here automatically)"
