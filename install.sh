@@ -11,7 +11,7 @@ APP="$HOME/.herdr-voice"
 CFG="$APP/config.json"
 OLD_CFG="$HOME/.config/herd-voice/config.json"
 SETTINGS="$HOME/.claude/settings.json"
-LABEL="dev.ensar.herdr-voice"
+LABEL="dev.herdr-voice"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 BIN="$HOME/.local/bin/herdr-voice"
 
@@ -66,8 +66,11 @@ mkdir -p "$HOME/.local/bin"; cp "$ROOT/bin/herdr-voice" "$BIN"; chmod +x "$BIN"
 echo "CLI: $BIN"
 
 # 4) launchd agent (shared template, role-specific daemon)
+# migrate: drop the previously-labeled agent (label renamed dev.ensar.herdr-voice -> dev.herdr-voice)
+launchctl unload "$HOME/Library/LaunchAgents/dev.ensar.herdr-voice.plist" 2>/dev/null || true
+rm -f "$HOME/Library/LaunchAgents/dev.ensar.herdr-voice.plist"
 sed -e "s#@NODE@#$NODE#g" -e "s#@APP@#$APP#g" -e "s#@DAEMON@#$DAEMON#g" \
-  "$ROOT/launchd/dev.ensar.herdr-voice.plist.tmpl" > "$PLIST"
+  "$ROOT/launchd/dev.herdr-voice.plist.tmpl" > "$PLIST"
 launchctl unload "$PLIST" 2>/dev/null || true
 launchctl load -w "$PLIST"; sleep 1
 

@@ -53,7 +53,7 @@ Claude Code (host Mac) finishes a task / needs approval
 | `src/lib/{config,http,speak,logger,presence}.mjs` | config loader · tiny HTTP helpers · serial `say` queue · rotating logger · presence watcher.                                                                                                         |
 | `bin/herdr-voice`                                 | **CLI:** `start/stop/restart/status/logs/enable/disable/uninstall` — manages this machine's daemon.                                                                                                  |
 | `plugin/`                                         | **herdr plugin** (`ensar.herd-voice`): toggle/enable/disable actions.                                                                                                                                |
-| `launchd/dev.ensar.herdr-voice.plist.tmpl`        | launchd template for both the router (host) and the sink (remote).                                                                                                                                   |
+| `launchd/dev.herdr-voice.plist.tmpl`              | launchd template for both the router (host) and the sink (remote).                                                                                                                                   |
 
 Daemons + Claude hooks are **Node.js** (stdlib only); the CLI + plugin actions are **Bash**.
 
@@ -82,7 +82,7 @@ This will:
 
 1. Create `~/.herdr-voice/config.json` and **generate a token**. Role: `host`.
 2. Add the Claude **Stop + Notification hooks** to `~/.claude/settings.json` (idempotent; existing hooks preserved).
-3. Load the launchd **voice-router** (`~/Library/LaunchAgents/dev.ensar.herdr-voice.plist`) and health-check it.
+3. Load the launchd **voice-router** (`~/Library/LaunchAgents/dev.herdr-voice.plist`) and health-check it.
 4. Link the herdr plugin (`herdr plugin link plugin/`).
 
 That's it — finish a task and you'll hear it. To toggle with a keybind, add this to `~/.config/herdr/config.toml`, then run `herdr server reload-config`:

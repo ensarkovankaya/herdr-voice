@@ -3,7 +3,7 @@ set -euo pipefail
 APP="$HOME/.herdr-voice"
 CFG="$APP/config.json"
 LOG="$APP/logs/herdr-voice.log"
-LABEL="dev.ensar.herdr-voice"
+LABEL="dev.herdr-voice"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 UID_N="$(id -u)"
 
