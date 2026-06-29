@@ -42,18 +42,18 @@ Claude Code (host Mac) finishes a task / needs approval
 
 ### Components
 
-| File                                                   | Role                                                                                                                                                                                                 |
-| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/voice-router.mjs`                                 | **Host daemon.** Accepts `/speak`, routes to the active device; tracks the remote sink via `/register`·`/deregister`; falls back to local `say` if the remote is unreachable. Always-on via launchd. |
-| `src/voice-sink.mjs`                                   | **Remote daemon.** `/speak {text}` → `say -v <voice>`. Installed as a launchd agent by `./install.sh remote`.                                                                                        |
-| `src/speak-summary.mjs`                                | **Claude Stop hook.** Reads the last assistant message from the transcript → `summarize` → POSTs to the router. Never throws (won't block Claude).                                                   |
-| `src/notify-cue.mjs`                                   | **Claude Notification hook.** Speaks a short fixed cue when approval/input is needed.                                                                                                                |
-| `src/lib/summarize.mjs`                                | Strips markdown/code/emoji, reduces to the first sentence(s) (≤240 chars); falls back to a fixed phrase when empty.                                                                                  |
-| `src/lib/strings.mjs`                                  | Built-in spoken-string packs (`en`, `tr`), selected by `config.language`.                                                                                                                            |
-| `src/lib/{config,http,speak,logger,presence,pane}.mjs` | config loader · tiny HTTP helpers · serial `say` queue · rotating logger · presence watcher · per-pane override resolver.                                                                            |
-| `bin/herdr-voice`                                      | **CLI:** `start/stop/restart/status/logs/enable/disable/uninstall` — manages this machine's daemon.                                                                                                  |
-| `plugin/`                                              | **herdr plugin** (`ensar.herd-voice`): toggle (global) / toggle-pane / enable / disable actions.                                                                                                     |
-| `launchd/dev.herdr-voice.plist.tmpl`                   | launchd template for both the router (host) and the sink (remote).                                                                                                                                   |
+| File                                                   | Role                                                                                                                                                                                                      |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/voice-router.mjs`                                 | **Host daemon.** Accepts `/speak`, routes to the active device; tracks the remote sink via `/register`·`/deregister`; falls back to local `say` if the remote is unreachable. Always-on via launchd.      |
+| `src/voice-sink.mjs`                                   | **Remote daemon.** `/speak {text}` → `say -v <voice>`. Installed as a launchd agent by `./install.sh remote`.                                                                                             |
+| `src/speak-summary.mjs`                                | **Claude Stop hook.** Waits for the transcript to settle (so it never speaks the previous turn), reads the last assistant message → `summarize` → POSTs to the router. Never throws (won't block Claude). |
+| `src/notify-cue.mjs`                                   | **Claude Notification hook.** Speaks a short fixed cue when approval/input is needed.                                                                                                                     |
+| `src/lib/summarize.mjs`                                | Strips markdown/code/emoji, reduces to the first sentence(s) (≤240 chars); falls back to a fixed phrase when empty.                                                                                       |
+| `src/lib/strings.mjs`                                  | Built-in spoken-string packs (`en`, `tr`), selected by `config.language`.                                                                                                                                 |
+| `src/lib/{config,http,speak,logger,presence,pane}.mjs` | config loader · tiny HTTP helpers · serial `say` queue · rotating logger · presence watcher · per-pane override resolver.                                                                                 |
+| `bin/herdr-voice`                                      | **CLI:** `start/stop/restart/status/logs/enable/disable/uninstall` — manages this machine's daemon.                                                                                                       |
+| `plugin/`                                              | **herdr plugin** (`ensar.herd-voice`): toggle (global) / toggle-pane / enable / disable actions.                                                                                                          |
+| `launchd/dev.herdr-voice.plist.tmpl`                   | launchd template for both the router (host) and the sink (remote).                                                                                                                                        |
 
 Daemons + Claude hooks are **Node.js** (stdlib only); the CLI + plugin actions are **Bash**.
 
@@ -103,7 +103,7 @@ command = "ensar.herd-voice.toggle-pane"
 description = "herd-voice: toggle voice (this pane)"
 ```
 
-**Per-pane vs global:** `prefix+shift+v` is the global master switch (off ⇒ everything silent). `toggle-pane` flips voice for just the focused Claude pane (stored in `~/.herdr-voice/panes/`, keyed by `HERDR_PANE_ID`). With the master on, a pane's effective state is: explicit override (on/off) if set, otherwise `sessionDefault` (`on` = talk, `off` = opt-in). So set `sessionDefault: "off"` to start every session silent and un-mute just the ones you want with `prefix+shift+p`; leave it `on` to talk everywhere and silence the noisy ones. Outside herdr (no `HERDR_PANE_ID`) voice simply follows the master.
+**Per-pane vs global:** `prefix+shift+v` is the global master switch; `prefix+shift+p` toggles just the focused pane. Set `sessionDefault: "off"` (see [Configuration](#configuration)) to start every session silent and opt the ones you want in with `prefix+shift+p`; leave it `on` to talk everywhere and silence the noisy ones. See [Keybinds](#keybinds) for exactly how they combine.
 
 ### Remote (a second machine — optional)
 
@@ -186,6 +186,22 @@ herdr-voice uninstall   # remove everything (see below)
 $ herdr-voice status
 herdr-voice: running | role=host | enabled=true | voice=Samantha
 ```
+
+______________________________________________________________________
+
+## Keybinds
+
+herd-voice exposes herdr **plugin actions**; bind the ones you want in `~/.config/herdr/config.toml` (snippet in [Host setup](#host-where-claude-code-runs)), then run `herdr server reload-config`. `prefix` is herdr's own leader key (whatever you've set it to in herdr).
+
+| Shortcut         | herdr action                           | What it does                                                                      |
+| ---------------- | -------------------------------------- | --------------------------------------------------------------------------------- |
+| `prefix+shift+v` | `ensar.herd-voice.toggle`              | **Global master** on/off — silences or re-enables voice for the whole machine.    |
+| `prefix+shift+p` | `ensar.herd-voice.toggle-pane`         | **This pane only** — toggles voice for the focused Claude pane (opt-in override). |
+| *(unbound)*      | `ensar.herd-voice.enable` / `.disable` | Force the global master on / off (same as `herdr-voice enable` / `disable`).      |
+
+The shortcut keys above are just suggestions — you pick them in your herdr config; the **action ids** are what matter.
+
+**How they combine:** voice plays only when the **master is on** *and* the pane is on. A pane is "on" when its explicit override (set by `prefix+shift+p`) says so, or — with no override — when `sessionDefault` is `on`. So `prefix+shift+v` is the big switch and `prefix+shift+p` opts individual sessions in or out.
 
 ______________________________________________________________________
 
