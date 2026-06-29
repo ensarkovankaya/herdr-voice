@@ -119,6 +119,38 @@ key must be in the service unit's environment (the installer injects it when set
 at install time), not just your interactive shell. Other failures log
 `gemini: HTTP <status>` or `gemini: no audio in response`.
 
+## Summarizer (`claude` / `command`) is silent, wrong, or slow
+
+These modes shell out to a subprocess and **fall back to the `heuristic`
+silently** on any failure — so a misconfigured one sounds like "the summaries
+got dumber", never an error.
+
+```sh
+# Does the hook even see `claude`? (mode = claude)
+command -v claude
+
+# Reproduce the exact call the hook makes (mode = claude, language = tr):
+printf 'A long assistant reply with **markdown** and a code block.' \
+  | claude -p --model haiku 'Summarize in ONE short spoken sentence in Turkish. No markdown, no emoji.'
+```
+
+- **Always the heuristic, `claude` ignored** — `claude` isn't on the hook's
+  `PATH`, or it errored. The hooks run in Claude Code's environment (not the
+  daemon's); set an absolute `summarize.claude.cmd` or fix `PATH`.
+- **Summary in the wrong language** — set `summarize.claude.language` (e.g.
+  `"tr"`). It's independent of the top-level `language` and is injected into the
+  prompt. See
+  [summarizer.md](summarizer.md#claude-your-logged-in-claude-zero-setup).
+- **Cut off / falls back under load** — the model didn't answer within
+  `timeoutMs` (default `12000` for `claude`, `8000` for `command`). Raise it, or
+  keep a fast `model` (`haiku`).
+- **Latency is normal** — you hear nothing until the model returns. Use
+  `heuristic` if you want instant, offline speech.
+
+A nested `claude -p` summary cannot recurse into itself: the hook stamps
+`HERDR_VOICE_SUMMARIZING` on the child so the inner Claude session's own Stop
+hook no-ops.
+
 ## Plugin / toggle
 
 ```sh

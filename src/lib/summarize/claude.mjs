@@ -4,20 +4,35 @@ import { spawnCapture } from './spawn.mjs';
 // resolve to the latest model in that tier, so this default stays current.
 const DEFAULT_MODEL = 'haiku';
 
+// Language the summary is written in. Independent of the top-level `language`
+// (which selects the spoken fixed strings and TTS voice) so the two can differ.
+// Injected into the prompt as ${language}.
+const DEFAULT_LANGUAGE = 'en';
+
 // Instruction handed to Claude on the `-p` arg; the message text is piped on
-// stdin (avoids argv length limits and shell escaping).
+// stdin (avoids argv length limits and shell escaping). ${language} is replaced
+// with the resolved language name (e.g. "Turkish") before the call.
 const DEFAULT_PROMPT =
-  'Summarize this Claude Code assistant message in ONE short, plain spoken sentence. No markdown, no code, no emoji, no preamble — just the sentence.';
+  'Summarize this Claude Code assistant message in ONE short, plain spoken sentence in ${language}. No markdown, no code, no emoji, no preamble — just the sentence.';
+
+// Map a BCP-47 code to its English display name ("tr" -> "Turkish"); fall back
+// to the code itself for anything Intl can't name.
+function languageName(code) {
+  try { return new Intl.DisplayNames(['en'], { type: 'language' }).of(code) || code; }
+  catch { return code; }
+}
 
 // Summarizer that asks the user's logged-in Claude CLI (`claude -p`) for a
-// one-sentence summary — no API key, reuses the existing login. Model is
-// configurable via cfg.summarize.claude.model (default `haiku`); cmd, prompt,
-// and timeoutMs are overridable too. Rejects on failure so the dispatcher
-// falls back to the heuristic.
+// one-sentence summary — no API key, reuses the existing login. model,
+// language, prompt, cmd, and timeoutMs are all configurable via
+// cfg.summarize.claude. Rejects on failure so the dispatcher falls back to the
+// heuristic.
 export function makeClaudeSummarizer({ spawn } = {}) {
   return function claudeSummarize(text, cfg) {
     const c = (cfg.summarize && cfg.summarize.claude) || {};
-    const args = ['-p', '--model', c.model || DEFAULT_MODEL, c.prompt || DEFAULT_PROMPT];
+    const prompt = (c.prompt || DEFAULT_PROMPT)
+      .replace(/\$\{language\}/g, languageName(c.language || DEFAULT_LANGUAGE));
+    const args = ['-p', '--model', c.model || DEFAULT_MODEL, prompt];
     return spawnCapture(c.cmd || 'claude', args, { spawn, input: text, timeoutMs: c.timeoutMs || 12000 });
   };
 }

@@ -38,6 +38,34 @@ test('claude: default cmd/model, text piped to stdin, returns stdout', async () 
   assert.equal(written, 'THE MESSAGE');
 });
 
+test('claude: default prompt summarizes in English', async () => {
+  let args;
+  const spawn = (_cmd, a) => { args = a; return fakeChild({ out: 'x' }); };
+  await makeClaudeSummarizer({ spawn })('m', { summarize: { claude: {} } });
+  assert.match(args[3], /\bin English\b/);
+});
+
+test('claude: language code is injected into the prompt as a name', async () => {
+  let args;
+  const spawn = (_cmd, a) => { args = a; return fakeChild({ out: 'x' }); };
+  await makeClaudeSummarizer({ spawn })('m', { summarize: { claude: { language: 'tr' } } });
+  assert.match(args[3], /\bin Turkish\b/);
+});
+
+test('claude: custom prompt with ${language} is interpolated', async () => {
+  let args;
+  const spawn = (_cmd, a) => { args = a; return fakeChild({ out: 'x' }); };
+  await makeClaudeSummarizer({ spawn })('m', { summarize: { claude: { language: 'tr', prompt: 'One line in ${language}.' } } });
+  assert.equal(args[3], 'One line in Turkish.');
+});
+
+test('claude: unknown language code falls back to the code itself', async () => {
+  let args;
+  const spawn = (_cmd, a) => { args = a; return fakeChild({ out: 'x' }); };
+  await makeClaudeSummarizer({ spawn })('m', { summarize: { claude: { language: 'zz', prompt: '${language}' } } });
+  assert.equal(args[3], 'zz');
+});
+
 test('claude: model/cmd/prompt overridable from config', async () => {
   let captured;
   const spawn = (cmd, args) => { captured = { cmd, args }; return fakeChild({ out: 'x' }); };

@@ -7,7 +7,7 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [2.0.0] — 2026-06-29
 
 Cross-platform release with pluggable speech and summarization. Current
-pre-release: `2.0.0-rc.4`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.md).
+pre-release: `2.0.0-rc.5`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.md).
 
 ### Added
 
@@ -22,9 +22,10 @@ pre-release: `2.0.0-rc.4`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.md
   `ffplay`/`play`), configurable via `audio.player`, including a `${file}`
   command template.
 - **Configurable summarizer** — `heuristic` (default), `claude` (your logged-in
-  Claude CLI, default model `haiku`, model configurable), `llm` (any HTTP
-  endpoint described by templates), and `command` (arbitrary subprocess), with a
-  safe fallback chain. See [docs/summarizer.md](docs/summarizer.md).
+  Claude CLI; `model` defaults to `haiku`, with configurable summary `language`
+  and `prompt`), `llm` (any HTTP endpoint described by templates), and `command`
+  (arbitrary subprocess), with a safe fallback chain. See
+  [docs/summarizer.md](docs/summarizer.md).
 - **Documentation set** under `docs/` (architecture, configuration, providers,
   summarizer, remote setup, troubleshooting, migration) plus `CONTRIBUTING.md`.
 - **JSON locale packs** (`src/lib/locales/`) as the single source of truth for
@@ -65,4 +66,4 @@ Initial release.
   service; one-command install/uninstall.
 
 [1.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v1.0.0
-[2.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v2.0.0-rc.4
+[2.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v2.0.0-rc.5

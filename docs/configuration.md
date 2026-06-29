@@ -96,7 +96,7 @@ If no player resolves, audio is a silent no-op (the daemon does not crash).
     "maxLen": 240,         // hard character cap applied to every mode's output
     "llm": { /* ... */ },     // used when mode = "llm"
     "command": { /* ... */ }, // used when mode = "command"
-    "claude": { "model": "haiku" }  // used when mode = "claude"
+    "claude": { "model": "haiku", "language": "en" }  // used when mode = "claude"
   }
 }
 ```

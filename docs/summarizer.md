@@ -48,6 +48,7 @@ summaries; it's a turnkey preset of `command` below.
     "maxLen": 240,
     "claude": {
       "model": "haiku",
+      "language": "en",
       "timeoutMs": 12000
     }
   }
@@ -56,19 +57,23 @@ summaries; it's a turnkey preset of `command` below.
 
 `claude` fields (all optional):
 
-| Field       | Default                             | Meaning                                                                                |
-| ----------- | ----------------------------------- | -------------------------------------------------------------------------------------- |
-| `model`     | `haiku`                             | Passed to `claude --model`. Use an alias (`haiku`/`sonnet`/`opus`) or a full model id. |
-| `cmd`       | `claude`                            | The CLI to invoke (override if `claude` isn't on `PATH`).                              |
-| `prompt`    | a "one spoken sentence" instruction | The instruction sent on `-p`; the message text is piped on stdin.                      |
-| `timeoutMs` | `12000`                             | Kill the child and fall back after this many ms.                                       |
+| Field       | Default                             | Meaning                                                                                                                                                  |
+| ----------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `model`     | `haiku`                             | Passed to `claude --model`. Use an alias (`haiku`/`sonnet`/`opus`) or a full model id.                                                                   |
+| `language`  | `en`                                | Language the summary is written in. Any BCP-47 code (`en`, `tr`, `de`, …); injected as `${language}` (its English name, e.g. "Turkish") into the prompt. |
+| `cmd`       | `claude`                            | The CLI to invoke (override if `claude` isn't on `PATH`).                                                                                                |
+| `prompt`    | a "one spoken sentence" instruction | The instruction sent on `-p`; the message text is piped on stdin. `${language}` is substituted with the resolved language name.                          |
+| `timeoutMs` | `12000`                             | Kill the child and fall back after this many ms.                                                                                                         |
 
 Runs `claude -p --model <model> "<prompt>"` with the message text on stdin.
-`haiku` keeps it fast and cheap; bump to `sonnet` for sharper summaries.
-Latency is whatever the model takes — you hear nothing until it returns, then
-the heuristic catches any failure. Note the spoken language follows your Claude
-setup (e.g. a global "respond in Turkish" instruction), so tune `prompt` if you
-want to pin it.
+`haiku` keeps it fast and cheap; bump to `sonnet` for sharper summaries. The
+summary language is pinned by `language` (independent of the top-level
+`language` that picks the voice and spoken strings) — the default prompt ends
+with "… in `${language}`", so the model is told explicitly rather than guessing
+from your Claude setup. Write a fully custom `prompt` to change tone or length;
+keep `${language}` in it if you still want the language pinned. Latency is
+whatever the model takes — you hear nothing until it returns, then the heuristic
+catches any failure.
 
 ## `command` (run a subprocess)
 
