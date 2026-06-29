@@ -16,19 +16,11 @@ const TTS_DEFAULTS = {
   gemini: { model: 'gemini-2.5-flash-preview-tts', voice: 'Kore', apiKeyEnv: 'GEMINI_API_KEY', languageCode: '' },
 };
 const AUDIO_DEFAULTS = { player: 'auto' };
-const SUMMARIZE_DEFAULTS = { mode: 'heuristic', maxLen: 240, llm: {}, command: {} };
+const SUMMARIZE_DEFAULTS = { mode: 'heuristic', maxLen: 240, llm: {}, command: {}, claude: {} };
 
 // On-disk config path; HERD_VOICE_CONFIG overrides it (used by tests).
 export function configPath() {
   return process.env.HERD_VOICE_CONFIG || join(homedir(), '.herdr-voice', 'config.json');
-}
-
-// v1 stored a flat `voice`; v2 nests it under tts.say.voice. Only synthesize a
-// tts block when the config predates v2 (no tts key).
-export function migrateConfig(raw) {
-  const out = { ...raw };
-  if (!out.tts) out.tts = { provider: 'say', say: { voice: raw.voice || TTS_DEFAULTS.say.voice } };
-  return out;
 }
 
 // Layer the user's tts settings over the defaults so every provider's block is
@@ -42,12 +34,11 @@ function mergeTts(tts = {}) {
   };
 }
 
-// Read config.json (missing/invalid -> defaults), migrate the v1 shape, then
-// layer user values over DEFAULTS and resolve the language-dependent strings.
+// Read config.json (missing/invalid -> defaults), then layer user values over
+// DEFAULTS and resolve the language-dependent strings.
 export function loadConfig() {
   let raw = {};
   try { raw = JSON.parse(readFileSync(configPath(), 'utf8')); } catch { /* defaults */ }
-  raw = migrateConfig(raw);
   const merged = { ...DEFAULTS, ...raw };
   merged.tts = mergeTts(raw.tts);
   merged.audio = { ...AUDIO_DEFAULTS, ...(raw.audio || {}) };

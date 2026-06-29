@@ -92,10 +92,11 @@ If no player resolves, audio is a silent no-op (the daemon does not crash).
 ```jsonc
 {
   "summarize": {
-    "mode": "heuristic",   // heuristic | llm | command
+    "mode": "heuristic",   // heuristic | llm | command | claude
     "maxLen": 240,         // hard character cap applied to every mode's output
     "llm": { /* ... */ },     // used when mode = "llm"
-    "command": { /* ... */ }  // used when mode = "command"
+    "command": { /* ... */ }, // used when mode = "command"
+    "claude": { "model": "haiku" }  // used when mode = "claude"
   }
 }
 ```
@@ -155,6 +156,6 @@ picks the matching macOS voice. Restart after a TTS change:
 ## See also
 
 - [providers.md](providers.md) — provider setup and the `speak()` contract
-- [summarizer.md](summarizer.md) — `llm` / `command` recipes
+- [summarizer.md](summarizer.md) — `llm` / `command` / `claude` recipes
 - [remote-setup.md](remote-setup.md) — host/remote roles and presence
 - [migration-v1-v2.md](migration-v1-v2.md) — the old flat `voice` key

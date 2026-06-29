@@ -4,6 +4,8 @@ import { loadConfig } from './lib/config.mjs';
 import { makeSummarizer } from './lib/summarize/index.mjs';
 import { makeLlmSummarizer } from './lib/summarize/llm.mjs';
 import { makeCommandSummarizer } from './lib/summarize/command.mjs';
+import { makeClaudeSummarizer } from './lib/summarize/claude.mjs';
+import { RECURSION_GUARD_ENV } from './lib/summarize/spawn.mjs';
 import { postJson } from './lib/http.mjs';
 import { voiceEnabledForPane } from './lib/pane.mjs';
 
@@ -65,6 +67,11 @@ function readStdin() {
 // Stop-hook entry: read the settled transcript, summarize the last assistant
 // turn, and POST it to the local router. No-op when voice is off for this pane.
 async function main() {
+  // Bail if we are the Stop hook of a `claude -p` summary spawned by this very
+  // hook (the `command`/`claude` modes). spawnCapture stamps that flag; without
+  // this guard, mode=claude would recurse: summary → claude -p → Stop hook →
+  // summary → …
+  if (process.env[RECURSION_GUARD_ENV]) return;
   const cfg = loadConfig();
   if (!voiceEnabledForPane(cfg)) return;
   let input;
@@ -75,6 +82,7 @@ async function main() {
   const summarize = makeSummarizer({
     getLlm: () => makeLlmSummarizer(),
     getCommand: () => makeCommandSummarizer(),
+    getClaude: () => makeClaudeSummarizer(),
   });
   const text = await summarize(extractLastAssistantText(jsonl), cfg);
   const sessionId = input.session_id || (input.transcript_path || '').split('/').pop().replace(/\.jsonl$/, '');

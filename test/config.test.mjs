@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir, homedir } from 'node:os';
 import { join } from 'node:path';
-import { loadConfig, configPath, migrateConfig } from '../src/lib/config.mjs';
+import { loadConfig, configPath } from '../src/lib/config.mjs';
 
 function writeCfg(obj) {
   const p = join(mkdtempSync(join(tmpdir(), 'hv-')), 'config.json');
@@ -74,17 +74,6 @@ function withConfig(obj, fn) {
   try { return fn(); } finally { if (prev === undefined) delete process.env.HERD_VOICE_CONFIG; else process.env.HERD_VOICE_CONFIG = prev; }
 }
 
-test('migrateConfig: v1 flat voice -> tts.say.voice', () => {
-  const out = migrateConfig({ voice: 'Yelda' });
-  assert.equal(out.tts.provider, 'say');
-  assert.equal(out.tts.say.voice, 'Yelda');
-});
-
-test('migrateConfig: existing tts block preserved', () => {
-  const out = migrateConfig({ voice: 'Yelda', tts: { provider: 'piper' } });
-  assert.equal(out.tts.provider, 'piper');
-});
-
 test('loadConfig: nested defaults present', () => withConfig({}, () => {
   const c = loadConfig();
   assert.equal(c.tts.provider, 'say');
@@ -93,10 +82,11 @@ test('loadConfig: nested defaults present', () => withConfig({}, () => {
   assert.equal(c.audio.player, 'auto');
   assert.equal(c.summarize.mode, 'heuristic');
   assert.equal(c.summarize.maxLen, 240);
+  assert.deepEqual(c.summarize.claude, {});
 }));
 
-test('loadConfig: v1 config migrates voice into tts.say.voice', () => withConfig({ voice: 'Daniel' }, () => {
+test('loadConfig: no tts block → say defaults (no v1 migration)', () => withConfig({ voice: 'Daniel' }, () => {
   const c = loadConfig();
   assert.equal(c.tts.provider, 'say');
-  assert.equal(c.tts.say.voice, 'Daniel');
+  assert.equal(c.tts.say.voice, 'Samantha'); // flat v1 `voice` is ignored, not migrated
 }));

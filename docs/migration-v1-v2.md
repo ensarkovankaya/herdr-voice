@@ -1,20 +1,21 @@
 # Migrating from v1 to v2
 
 v2 makes herdr-voice cross-platform with pluggable TTS providers and a
-configurable summarizer. The good news: **you don't have to do anything to your
-config** — old configs are migrated in memory at load time.
+configurable summarizer. Almost everything in your config carries over
+unchanged — the **one** field that moved is the voice, and updating it is a
+one-line edit (or just pick your voice again in the installer).
 
 ## What changed
 
-| Area         | v1                     | v2                                          |
-| ------------ | ---------------------- | ------------------------------------------- |
-| Platforms    | macOS only             | macOS + Linux (Windows on the roadmap)      |
-| TTS          | `say` only, hardcoded  | pluggable: `say`, `piper`, `gemini`         |
-| Voice config | flat top-level `voice` | nested `tts.say.voice`                      |
-| Summarizer   | fixed heuristic        | `heuristic` (default), `llm`, `command`     |
-| Audio output | implicit (`say` plays) | OS-aware `audio.player` for synth providers |
-| Service mgmt | launchd only           | launchd (macOS) + systemd `--user` (Linux)  |
-| Plugin id    | `ensar.herdr-voice`    | `herdr-voice`                               |
+| Area         | v1                     | v2                                                |
+| ------------ | ---------------------- | ------------------------------------------------- |
+| Platforms    | macOS only             | macOS + Linux (Windows on the roadmap)            |
+| TTS          | `say` only, hardcoded  | pluggable: `say`, `piper`, `gemini`               |
+| Voice config | flat top-level `voice` | nested `tts.say.voice`                            |
+| Summarizer   | fixed heuristic        | `heuristic` (default), `llm`, `command`, `claude` |
+| Audio output | implicit (`say` plays) | OS-aware `audio.player` for synth providers       |
+| Service mgmt | launchd only           | launchd (macOS) + systemd `--user` (Linux)        |
+| Plugin id    | `ensar.herdr-voice`    | `herdr-voice`                                     |
 
 ## Config: the only field that moved
 
@@ -30,12 +31,10 @@ v2 nests it under the provider block:
 { "tts": { "provider": "say", "say": { "voice": "Samantha" } } }
 ```
 
-You don't need to rewrite it. `migrateConfig()` (`src/lib/config.mjs`) detects a
-config with no `tts` block and synthesizes
-`tts: { provider: "say", say: { voice: <old voice> } }` from the old flat
-`voice` in memory. Your file on disk is left untouched; everything keeps
-working. Rewrite it to the nested form only if you want to switch providers or
-edit it by hand.
+v2 does **not** auto-migrate the old flat `voice` — it's simply ignored, and an
+un-edited v1 config falls back to the default voice (`Samantha`). To keep your
+voice, either move it under `tts.say.voice` by hand as shown above, or just
+re-run the installer and pick your voice when prompted. This is a one-time edit.
 
 All other v1 fields (`token`, `host`, `port`, `language`, `enabled`,
 `sessionDefault`, `role`, timeouts, spoken-string overrides) are unchanged.

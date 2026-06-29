@@ -24,6 +24,16 @@ test('command mode dispatches to getCommand', async () => {
   assert.equal(await s('x', cfg({ mode: 'command' })), 'cmd out');
 });
 
+test('claude mode dispatches to getClaude', async () => {
+  const s = makeSummarizer({ getClaude: () => async () => 'claude out' });
+  assert.equal(await s('x', cfg({ mode: 'claude' })), 'claude out');
+});
+
+test('claude failure falls back to heuristic', async () => {
+  const s = makeSummarizer({ getClaude: () => async () => { throw new Error('down'); } });
+  assert.equal(await s('Plain text.', cfg({ mode: 'claude' })), 'Plain text.');
+});
+
 test('empty input -> fallback', async () => {
   const s = makeSummarizer({});
   assert.equal(await s('', cfg()), 'Done.');

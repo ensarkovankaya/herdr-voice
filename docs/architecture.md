@@ -102,7 +102,7 @@ The v2 design is three pluggable layers behind small factory functions:
 | Layer         | Directory            | Contract                                   | Implementations                           |
 | ------------- | -------------------- | ------------------------------------------ | ----------------------------------------- |
 | **TTS**       | `src/lib/tts/`       | `provider.speak(text, {cfg, log, player})` | `say`, `piper`, `gemini`                  |
-| **Summarize** | `src/lib/summarize/` | `summarize(text, cfg) → string`            | `heuristic`, `llm`, `command`             |
+| **Summarize** | `src/lib/summarize/` | `summarize(text, cfg) → string`            | `heuristic`, `llm`, `command`, `claude`   |
 | **Service**   | `bin/lib/service.sh` | `svc_*` functions dispatched on `uname`    | launchd (macOS), systemd `--user` (Linux) |
 
 Each layer picks its implementation from config at runtime and degrades safely:
@@ -121,9 +121,8 @@ filesystem, or real audio. See [contributing.md](../CONTRIBUTING.md).
 
 ## Configuration & strings
 
-`loadConfig()` (`src/lib/config.mjs`) reads `~/.herdr-voice/config.json`,
-migrates the v1 flat shape in memory (see
-[migration-v1-v2.md](migration-v1-v2.md)), layers user values over defaults, and
+`loadConfig()` (`src/lib/config.mjs`) reads `~/.herdr-voice/config.json`, layers
+user values over defaults, and
 resolves the language-dependent spoken strings (`src/lib/strings.mjs`, which
 loads one JSON pack per language from `src/lib/locales/`). The Bash CLI and
 plugin read those same locale files via `jq`, so translations have a single

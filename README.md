@@ -13,7 +13,7 @@ ______________________________________________________________________
 - 🔔 **Speaks on the moments that matter** — task done, or approval/input needed.
 - 📍 **Follows you across devices** — presence-aware routing over [Tailscale](https://tailscale.com); audio plays where you are.
 - 🗣️ **Pluggable TTS** — `say` (macOS built-in), `piper` (local neural, macOS + Linux), or `gemini` (cloud). Any voice, any language.
-- 🧹 **Speech-friendly summaries** — markdown, code blocks, and emoji are stripped. Summarizer is pluggable too: heuristic (default), LLM via HTTP, or any CLI command (e.g. `claude -p`).
+- 🧹 **Speech-friendly summaries** — markdown, code blocks, and emoji are stripped. Summarizer is pluggable too: heuristic (default), your logged-in Claude (`claude`, default model Haiku), LLM via HTTP, or any CLI command.
 - 🔌 **herdr plugin** — toggle voice on/off with a keybind, see status in your prompt.
 - 🪶 **Tiny footprint** — daemons are Node.js stdlib only (zero npm deps); CLI is Bash.
 - 🛠️ **Real service** — launchd (macOS) / systemd (Linux) startup, rotating logs, one-command install & uninstall.
@@ -107,15 +107,15 @@ ______________________________________________________________________
 
 ## 📚 Documentation
 
-| Doc                                        | What's in it                                               |
-| ------------------------------------------ | ---------------------------------------------------------- |
-| [Architecture](docs/architecture.md)       | Routing, presence, the speak pipeline, abstraction layers. |
-| [Configuration](docs/configuration.md)     | Complete `config.json` reference.                          |
-| [Providers](docs/providers.md)             | `say` / `piper` / `gemini` setup + writing your own.       |
-| [Summarizer](docs/summarizer.md)           | `heuristic` / `llm` / `command` modes with recipes.        |
-| [Remote setup](docs/remote-setup.md)       | Host + remote roles so audio follows you.                  |
-| [Troubleshooting](docs/troubleshooting.md) | No-sound checklist, diagnostics, logs.                     |
-| [Migration v1→v2](docs/migration-v1-v2.md) | What changed and why your old config still works.          |
+| Doc                                        | What's in it                                                   |
+| ------------------------------------------ | -------------------------------------------------------------- |
+| [Architecture](docs/architecture.md)       | Routing, presence, the speak pipeline, abstraction layers.     |
+| [Configuration](docs/configuration.md)     | Complete `config.json` reference.                              |
+| [Providers](docs/providers.md)             | `say` / `piper` / `gemini` setup + writing your own.           |
+| [Summarizer](docs/summarizer.md)           | `heuristic` / `claude` / `llm` / `command` modes with recipes. |
+| [Remote setup](docs/remote-setup.md)       | Host + remote roles so audio follows you.                      |
+| [Troubleshooting](docs/troubleshooting.md) | No-sound checklist, diagnostics, logs.                         |
+| [Migration v1→v2](docs/migration-v1-v2.md) | What changed and why your old config still works.              |
 
 Also: [CONTRIBUTING.md](CONTRIBUTING.md) · [CHANGELOG.md](CHANGELOG.md)
 

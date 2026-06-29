@@ -17,7 +17,7 @@ src/
   speak-summary.mjs       Stop hook   (summarize last turn → POST /speak)
   notify-cue.mjs          Notification hook (fixed cue → POST /speak)
   lib/
-    config.mjs            config load + v1→v2 migration
+    config.mjs            config load + nested defaults
     http.mjs              tiny POST/parse/respond helpers
     logger.mjs            rotating file logger
     presence.mjs          remote presence watcher + pure decidePresenceAction
@@ -25,7 +25,7 @@ src/
     strings.mjs           loads JSON locale packs (en base + per-key fallback)
     locales/              one JSON file per language (en.json, tr.json, …)
     tts/                  speaker queue, OS player, providers (say/piper/gemini)
-    summarize/            mode dispatch + heuristic/llm/command
+    summarize/            mode dispatch + heuristic/llm/command/claude
 bin/herdr-voice           per-machine service CLI
 bin/lib/service.sh        launchd/systemd dispatch (svc_* functions)
 test/                     one *.test.mjs per module
