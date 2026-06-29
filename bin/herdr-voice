@@ -4,8 +4,6 @@ APP="$HOME/.herdr-voice"
 CFG="$APP/config.json"
 LOG="$APP/logs/herdr-voice.log"
 LABEL="dev.herdr-voice"
-PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
-UID_N="$(id -u)"
 
 die(){ echo "herdr-voice: $*" >&2; exit 1; }
 [ -f "$CFG" ] || die "no config: $CFG (run install first)"
@@ -20,12 +18,16 @@ hv_str(){
   else case "$(lang)" in tr) printf '%s' "$3" ;; *) printf '%s' "$2" ;; esac; fi
 }
 
+ROOT="${HERDR_VOICE_ROOT:-$APP}"
+# shellcheck source=bin/lib/service.sh
+. "$ROOT/bin/lib/service.sh" 2>/dev/null || . "$(dirname "$0")/lib/service.sh"
+
 case "${1:-status}" in
-  start)   launchctl load -w "$PLIST"; echo "started ($(role))" ;;
-  stop)    launchctl unload -w "$PLIST"; echo "stopped" ;;
-  restart) launchctl kickstart -k "gui/$UID_N/$LABEL"; echo "restarted" ;;
+  start)   svc_start; echo "started ($(role))" ;;
+  stop)    svc_stop; echo "stopped" ;;
+  restart) svc_restart; echo "restarted" ;;
   status)
-    if launchctl list "$LABEL" >/dev/null 2>&1; then st="running"; else st="stopped"; fi
+    st="$(svc_status)"
     echo "herdr-voice: $st | role=$(role) | enabled=$(jq -r '.enabled // false' "$CFG") | voice=$(voice)"
     [ "$(role)" = "remote" ] && echo "last registration: $(grep -E 'REGISTER|DEREGISTER' "$LOG" 2>/dev/null | tail -1 || echo '-')"
     echo "--- recent log ---"; tail -n 10 "$LOG" 2>/dev/null || echo "(no log)" ;;
@@ -35,7 +37,9 @@ case "${1:-status}" in
     tmp=$(mktemp); jq --argjson e "$new" '.enabled=$e' "$CFG" > "$tmp" && mv -f "$tmp" "$CFG"
     printf '[%s] [INFO] %s (cli)\n' "$(date -u +%FT%TZ)" "$([ "$new" = true ] && echo ENABLE || echo DISABLE)" >> "$LOG"
     msg=$([ "$new" = true ] && hv_str voiceOnText 'Voice on.' 'Ses açıldı.' || hv_str voiceOffText 'Voice off.' 'Ses kapandı.')
-    say -v "$(voice)" "$msg" 2>/dev/null || true
+    HOST=$(jq -r '.host // "127.0.0.1"' "$CFG"); PORT=$(jq -r '.port // 8973' "$CFG"); TOK=$(jq -r '.token // ""' "$CFG")
+    curl -fsS -X POST "http://$HOST:$PORT/speak" -H "X-Voice-Token: $TOK" -H 'Content-Type: application/json' \
+      -d "$(jq -nc --arg t "$msg" '{text:$t}')" >/dev/null 2>&1 || true
     echo "enabled=$new" ;;
   uninstall)
     r="$(role)"
@@ -45,8 +49,7 @@ case "${1:-status}" in
       read -r ans || ans=""
       case "$ans" in y|Y|yes) ;; *) echo "cancelled"; exit 0 ;; esac
     fi
-    launchctl unload -w "$PLIST" 2>/dev/null || true
-    rm -f "$PLIST"
+    svc_uninstall
     if [ "$r" = host ]; then
       S="$HOME/.claude/settings.json"
       if [ -f "$S" ]; then
