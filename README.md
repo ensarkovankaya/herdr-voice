@@ -44,7 +44,7 @@ Claude Code (host Mac) finishes a task / needs approval
 | File                                              | Role                                                                                                                                                                                                 |
 | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/voice-router.mjs`                            | **Host daemon.** Accepts `/speak`, routes to the active device; tracks the remote sink via `/register`·`/deregister`; falls back to local `say` if the remote is unreachable. Always-on via launchd. |
-| `src/voice-sink.mjs`                              | **Remote daemon.** `/speak {text}` → `say -v <voice>`. Installed as a launchd agent by `install-remote.sh`.                                                                                          |
+| `src/voice-sink.mjs`                              | **Remote daemon.** `/speak {text}` → `say -v <voice>`. Installed as a launchd agent by `./install.sh remote`.                                                                                        |
 | `src/speak-summary.mjs`                           | **Claude Stop hook.** Reads the last assistant message from the transcript → `summarize` → POSTs to the router. Never throws (won't block Claude).                                                   |
 | `src/notify-cue.mjs`                              | **Claude Notification hook.** Speaks a short fixed cue when approval/input is needed.                                                                                                                |
 | `src/lib/summarize.mjs`                           | Strips markdown/code, reduces to the first sentence(s) (≤240 chars); falls back to a fixed phrase when empty.                                                                                        |
@@ -101,14 +101,14 @@ Run this on the **away** machine so audio follows you there when you `herdr --re
 ```sh
 git clone https://github.com/ensarkovankaya/herdr-voice.git
 cd herdr-voice
-./install-remote.sh <HOST_TAILSCALE_IP> <TOKEN> [REMOTE_HOST]
+./install.sh remote <HOST_TAILSCALE_IP> <TOKEN> [HOST]
 ```
 
 - `<TOKEN>` — copy it from the host: `jq -r .token ~/.herdr-voice/config.json`. Must match on both sides.
-- `[REMOTE_HOST]` — optional; scopes which `herdr --remote <host>` session counts as "you're here" (omit to match any `--remote` session).
+- `[HOST]` — optional; scopes which `herdr --remote <host>` session counts as "you're here" (omit to match any `--remote` session).
 
 ```sh
-./install-remote.sh 100.x.y.z $(: paste token) my-host-magicdns
+./install.sh remote 100.x.y.z $(: paste token) my-host-magicdns
 ```
 
 Then just connect — audio is routed to this device automatically while the session is live:
