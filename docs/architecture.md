@@ -124,8 +124,11 @@ filesystem, or real audio. See [contributing.md](../CONTRIBUTING.md).
 `loadConfig()` (`src/lib/config.mjs`) reads `~/.herdr-voice/config.json`,
 migrates the v1 flat shape in memory (see
 [migration-v1-v2.md](migration-v1-v2.md)), layers user values over defaults, and
-resolves the language-dependent spoken strings (`src/lib/strings.mjs`, packs for
-`en`/`tr`). Daemons call `loadConfig()` per request, so most config edits take
+resolves the language-dependent spoken strings (`src/lib/strings.mjs`, which
+loads one JSON pack per language from `src/lib/locales/`). The Bash CLI and
+plugin read those same locale files via `jq`, so translations have a single
+source of truth across both runtimes. Daemons call `loadConfig()` per request,
+so most config edits take
 effect without a restart — **except** TTS provider changes, which are cached by
 the speaker (restart with `herdr-voice restart`).
 

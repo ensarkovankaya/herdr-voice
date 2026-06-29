@@ -107,7 +107,8 @@ the fixed `fallback` string. Full details and recipes:
 
 ## Spoken strings & localization
 
-`language` picks a built-in pack (`src/lib/strings.mjs`):
+`language` picks a built-in pack — one JSON file per language in
+`src/lib/locales/` (e.g. `en.json`, `tr.json`):
 
 | Key        | `en`               | `tr`                |
 | ---------- | ------------------ | ------------------- |
@@ -119,6 +120,12 @@ the fixed `fallback` string. Full details and recipes:
 Override any single phrase by setting the matching top-level field
 (`cue`/`fallback`/`voiceOnText`/`voiceOffText`). The language pack also seeds
 sensible defaults; you do not need to set these unless you want custom wording.
+
+**Adding a language** is just dropping a new file (e.g. `fr.json`) in
+`src/lib/locales/` with the four keys — no code change. Missing keys fall back
+to English, so partial translations are fine. Both the Node daemons and the
+Bash CLI/plugin read these files, so a new language works everywhere at once.
+See [contributing.md](../CONTRIBUTING.md).
 
 ## Environment variables
 

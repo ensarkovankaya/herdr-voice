@@ -22,7 +22,8 @@ src/
     logger.mjs            rotating file logger
     presence.mjs          remote presence watcher + pure decidePresenceAction
     pane.mjs              per-pane voice-state resolution
-    strings.mjs           en/tr spoken-string packs
+    strings.mjs           loads JSON locale packs (en base + per-key fallback)
+    locales/              one JSON file per language (en.json, tr.json, …)
     tts/                  speaker queue, OS player, providers (say/piper/gemini)
     summarize/            mode dispatch + heuristic/llm/command
 bin/herdr-voice           per-machine service CLI
@@ -87,7 +88,10 @@ Keep the suite green and fast (it runs in well under a second).
   dispatch in `src/lib/summarize/index.mjs`; keep the heuristic fallback intact.
 - **An OS / service backend** — extend the `svc_*` dispatch in
   `bin/lib/service.sh` and add a unit template.
-- **A language pack** — add an entry to `STRINGS` in `src/lib/strings.mjs`.
+- **A language pack** — drop a `<lang>.json` file in `src/lib/locales/` with
+  the keys `cue`, `fallback`, `voiceOn`, `voiceOff`. No code change: `strings.mjs`
+  loads it (English fills any missing key), and the Bash CLI/plugin read the
+  same file via `jq`. The installer copies `src/.`, so it ships automatically.
 
 ## Style
 

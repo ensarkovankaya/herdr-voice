@@ -10,12 +10,16 @@ die(){ echo "herdr-voice: $*" >&2; exit 1; }
 role(){ jq -r '.role // "host"' "$CFG"; }
 provider(){ jq -r '.tts.provider // "say"' "$CFG"; }
 lang(){ jq -r '.language // "en"' "$CFG"; }
-# Resolve a spoken string: explicit config field wins, else the language pack.
-# $1=config field, $2=English default, $3=Turkish default
+LOCALES="$APP/src/lib/locales"
+# Resolve a spoken string: explicit config field wins, else the shared locale
+# pack for $(lang), else the English pack. $1=config field, $2=locale pack key.
+# Reads the same JSON packs the Node daemons do — single source of truth.
 hv_str(){
   local v; v=$(jq -r --arg k "$1" '.[$k] // empty' "$CFG")
-  if [ -n "$v" ]; then printf '%s' "$v"
-  else case "$(lang)" in tr) printf '%s' "$3" ;; *) printf '%s' "$2" ;; esac; fi
+  [ -n "$v" ] && { printf '%s' "$v"; return; }
+  local p; p=$(jq -r --arg k "$2" '.[$k] // empty' "$LOCALES/$(lang).json" 2>/dev/null)
+  [ -n "$p" ] && { printf '%s' "$p"; return; }
+  jq -r --arg k "$2" '.[$k] // empty' "$LOCALES/en.json" 2>/dev/null
 }
 
 ROOT="${HERDR_VOICE_ROOT:-$APP}"
@@ -36,7 +40,7 @@ case "${1:-status}" in
     new=$([ "$1" = enable ] && echo true || echo false)
     tmp=$(mktemp); jq --argjson e "$new" '.enabled=$e' "$CFG" > "$tmp" && mv -f "$tmp" "$CFG"
     printf '[%s] [INFO] %s (cli)\n' "$(date -u +%FT%TZ)" "$([ "$new" = true ] && echo ENABLE || echo DISABLE)" >> "$LOG"
-    msg=$([ "$new" = true ] && hv_str voiceOnText 'Voice on.' 'Ses açıldı.' || hv_str voiceOffText 'Voice off.' 'Ses kapandı.')
+    msg=$([ "$new" = true ] && hv_str voiceOnText voiceOn || hv_str voiceOffText voiceOff)
     HOST=$(jq -r '.host // "127.0.0.1"' "$CFG"); PORT=$(jq -r '.port // 8973' "$CFG"); TOK=$(jq -r '.token // ""' "$CFG")
     curl -fsS -X POST "http://$HOST:$PORT/speak" -H "X-Voice-Token: $TOK" -H 'Content-Type: application/json' \
       -d "$(jq -nc --arg t "$msg" '{text:$t}')" >/dev/null 2>&1 || true

@@ -6,11 +6,17 @@ PANES="$HOME/.herdr-voice/panes"
 mode="${1:-toggle}"   # toggle|on|off = global master ; pane = focused-pane opt-in
 [ -f "$CFG" ] || { echo "no config: $CFG" >&2; exit 1; }
 
-# Resolve a spoken string: explicit config field wins, else the language pack.
+LOCALES="$(dirname "$CFG")/src/lib/locales"
+lang(){ jq -r '.language // "en"' "$CFG"; }
+# Resolve a spoken string: explicit config field wins, else the shared locale
+# pack for $(lang), else the English pack. $1=config field, $2=locale pack key.
+# Reads the same JSON packs the Node daemons do — single source of truth.
 hv_str(){
   local v; v=$(jq -r --arg k "$1" '.[$k] // empty' "$CFG")
-  if [ -n "$v" ]; then printf '%s' "$v"
-  else case "$(jq -r '.language // "en"' "$CFG")" in tr) printf '%s' "$3" ;; *) printf '%s' "$2" ;; esac; fi
+  [ -n "$v" ] && { printf '%s' "$v"; return; }
+  local p; p=$(jq -r --arg k "$2" '.[$k] // empty' "$LOCALES/$(lang).json" 2>/dev/null)
+  [ -n "$p" ] && { printf '%s' "$p"; return; }
+  jq -r --arg k "$2" '.[$k] // empty' "$LOCALES/en.json" 2>/dev/null
 }
 global_enabled(){ jq -r '.enabled // false' "$CFG"; }
 session_default(){ jq -r '.sessionDefault // "on"' "$CFG"; }
@@ -46,7 +52,7 @@ else
   set_global "$new"; scope="global"
 fi
 
-if [ "$new" = true ]; then printf '\033]0;🔈 herdr-voice on\007'; msg=$(hv_str voiceOnText 'Voice on.' 'Ses açıldı.'); else printf '\033]0;herdr-voice off\007'; msg=$(hv_str voiceOffText 'Voice off.' 'Ses kapandı.'); fi
+if [ "$new" = true ]; then printf '\033]0;🔈 herdr-voice on\007'; msg=$(hv_str voiceOnText voiceOn); else printf '\033]0;herdr-voice off\007'; msg=$(hv_str voiceOffText voiceOff); fi
 printf '[%s] [INFO] %s (%s)\n' "$(date -u +%FT%TZ)" "$([ "$new" = true ] && echo ENABLE || echo DISABLE)" "$scope" >> "$LOG" 2>/dev/null || true
 # spoken confirmation only when the global master is on (respect master mute)
 TOKEN=$(jq -r '.token // ""' "$CFG"); HOST=$(jq -r '.host // "127.0.0.1"' "$CFG"); PORT=$(jq -r '.port // 8973' "$CFG")
