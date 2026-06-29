@@ -53,10 +53,11 @@ if [ "$MODE" = host ]; then
   fi
 else
   DAEMON="voice-sink.mjs"
-  # preserve an existing voice if present, else default to Samantha
+  # preserve an existing voice/language on reinstall, else default to Samantha/en
   VOICE=$(jq -r '.voice // "Samantha"' "$CFG" 2>/dev/null || echo Samantha)
-  jq -n --arg t "$TOKEN_ARG" --arg h "$HOST_IP" --arg r "$RHOST" --arg v "$VOICE" \
-    '{token:$t, host:$h, port:8973, language:"en", voice:$v, enabled:true, role:"remote", remoteHost:$r, remoteTtlMs:3600000, forwardTimeoutMs:1500, postTimeoutMs:1500}' > "$CFG"
+  LANG_=$(jq -r '.language // "en"' "$CFG" 2>/dev/null || echo en)
+  jq -n --arg t "$TOKEN_ARG" --arg h "$HOST_IP" --arg r "$RHOST" --arg v "$VOICE" --arg l "$LANG_" \
+    '{token:$t, host:$h, port:8973, language:$l, voice:$v, enabled:true, role:"remote", remoteHost:$r, remoteTtlMs:3600000, forwardTimeoutMs:1500, postTimeoutMs:1500}' > "$CFG"
   echo "config written: $CFG"
 fi
 

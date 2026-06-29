@@ -1,10 +1,26 @@
 import { execFileSync } from 'node:child_process';
+import { networkInterfaces } from 'node:os';
 import { postJson } from './http.mjs';
 
 export function decidePresenceAction({ active, registered, lastRegisterMs, now, heartbeatMs }) {
   if (active && (!registered || now - lastRegisterMs >= heartbeatMs)) return 'register';
   if (!active && registered) return 'deregister';
   return 'noop';
+}
+
+// Pick the Tailscale IP (CGNAT range 100.64.0.0/10) straight from the network
+// interfaces — no dependency on the `tailscale` CLI being on PATH (launchd runs
+// with a minimal PATH where `tailscale` is usually not found).
+export function pickTailscaleIp(interfaces) {
+  for (const addrs of Object.values(interfaces || {})) {
+    for (const a of addrs || []) {
+      if (a && a.family === 'IPv4' && !a.internal) {
+        const [o1, o2] = a.address.split('.').map(Number);
+        if (o1 === 100 && o2 >= 64 && o2 <= 127) return a.address;
+      }
+    }
+  }
+  return '';
 }
 
 function pgrepHerdrRemote(remoteHost) {
@@ -16,6 +32,9 @@ function pgrepHerdrRemote(remoteHost) {
 }
 
 function myTailscaleIp() {
+  const fromIfaces = pickTailscaleIp(networkInterfaces());
+  if (fromIfaces) return fromIfaces;
+  // fallback to the CLI if it happens to be on PATH
   try { return execFileSync('tailscale', ['ip', '-4'], { encoding: 'utf8' }).split('\n')[0].trim(); }
   catch { return ''; }
 }
@@ -23,7 +42,6 @@ function myTailscaleIp() {
 export function startPresenceWatcher({ getConfig, log, intervalMs = 7000, heartbeatMs = 30_000 }) {
   let registered = false;
   let lastRegisterMs = 0;
-  const ip = myTailscaleIp();
   const tick = async () => {
     const cfg = getConfig();
     const active = pgrepHerdrRemote(cfg.remoteHost);
@@ -31,6 +49,8 @@ export function startPresenceWatcher({ getConfig, log, intervalMs = 7000, heartb
     const base = `http://${cfg.host}:${cfg.port}`;
     try {
       if (action === 'register') {
+        const ip = myTailscaleIp();
+        if (!ip) { log('WARN', 'presence register skipped: no Tailscale IP found'); return; }
         await postJson(`${base}/register`, { ip, port: cfg.port }, { token: cfg.token, timeoutMs: cfg.postTimeoutMs });
         if (!registered) log('INFO', `REGISTER ${ip}:${cfg.port} -> ${base}`);
         registered = true; lastRegisterMs = Date.now();
