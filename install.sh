@@ -11,7 +11,8 @@ APP="$HOME/.herdr-voice"
 CFG="$APP/config.json"
 SETTINGS="$HOME/.claude/settings.json"
 LABEL="dev.herdr-voice"
-PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+# shellcheck source=bin/lib/service.sh
+. "$ROOT/bin/lib/service.sh"
 BIN="$HOME/.local/bin/herdr-voice"
 
 usage(){ echo "usage: ./install.sh [host] | ./install.sh remote <HOST_TS_IP> <TOKEN> [HOST]" >&2; exit 1; }
@@ -37,8 +38,26 @@ cp -R "$ROOT/src/." "$APP/src/"
 if [ "$MODE" = host ]; then
   DAEMON="voice-router.mjs"
   if [ ! -f "$CFG" ]; then
-    jq -n --arg t "$(openssl rand -hex 16)" \
-      '{token:$t, host:"127.0.0.1", port:8973, language:"en", voice:"Samantha", enabled:true, role:"host", remoteHost:"", remoteTtlMs:3600000, forwardTimeoutMs:1500, postTimeoutMs:1500}' > "$CFG"
+    OS="$(svc_os)"
+    DEF_PROVIDER=$([ "$OS" = darwin ] && echo say || echo piper)
+    PROVIDER="$DEF_PROVIDER"
+    if [ -t 0 ]; then
+      printf "TTS provider [say/piper/gemini] (%s): " "$DEF_PROVIDER"; read -r ans || ans=""
+      case "$ans" in say|piper|gemini) PROVIDER="$ans" ;; esac
+    fi
+    case "$PROVIDER" in
+      say)    TTS_JSON='{"provider":"say","say":{"voice":"Samantha"}}' ;;
+      piper)  TTS_JSON='{"provider":"piper","piper":{"cmd":"python3 -m piper","voice":"en_US-lessac-medium","dataDir":"'"$APP"'/voices"}}' ;;
+      gemini)
+        KEYENV="GEMINI_API_KEY"; GVOICE="Kore"
+        if [ -t 0 ]; then
+          printf "Gemini API key env var (GEMINI_API_KEY): "; read -r k || k=""; [ -n "$k" ] && KEYENV="$k"
+          printf "Gemini voice (Kore): "; read -r v || v=""; [ -n "$v" ] && GVOICE="$v"
+        fi
+        TTS_JSON='{"provider":"gemini","gemini":{"model":"gemini-2.5-flash-preview-tts","voice":"'"$GVOICE"'","apiKeyEnv":"'"$KEYENV"'","languageCode":""}}' ;;
+    esac
+    jq -n --arg t "$(openssl rand -hex 16)" --argjson tts "$TTS_JSON" \
+      '{token:$t, host:"127.0.0.1", port:8973, language:"en", enabled:true, role:"host", remoteHost:"", remoteTtlMs:3600000, forwardTimeoutMs:1500, postTimeoutMs:1500, tts:$tts, audio:{player:"auto"}, summarize:{mode:"heuristic", maxLen:240}}' > "$CFG"
     echo "config written: $CFG"
   else
     # patch a missing token + guarantee role=host
@@ -48,11 +67,11 @@ if [ "$MODE" = host ]; then
   fi
 else
   DAEMON="voice-sink.mjs"
-  # preserve an existing voice/language on reinstall, else default to Samantha/en
-  VOICE=$(jq -r '.voice // "Samantha"' "$CFG" 2>/dev/null || echo Samantha)
+  # preserve an existing tts/language on reinstall, else default to say/en
   LANG_=$(jq -r '.language // "en"' "$CFG" 2>/dev/null || echo en)
-  jq -n --arg t "$TOKEN_ARG" --arg h "$HOST_IP" --arg r "$RHOST" --arg v "$VOICE" --arg l "$LANG_" \
-    '{token:$t, host:$h, port:8973, language:$l, voice:$v, enabled:true, role:"remote", remoteHost:$r, remoteTtlMs:3600000, forwardTimeoutMs:1500, postTimeoutMs:1500}' > "$CFG"
+  PREV_TTS=$(jq -c '.tts // {"provider":"say","say":{"voice":"Samantha"}}' "$CFG" 2>/dev/null || echo '{"provider":"say","say":{"voice":"Samantha"}}')
+  jq -n --arg t "$TOKEN_ARG" --arg h "$HOST_IP" --arg r "$RHOST" --arg l "$LANG_" --argjson tts "$PREV_TTS" \
+    '{token:$t, host:$h, port:8973, language:$l, enabled:true, role:"remote", remoteHost:$r, remoteTtlMs:3600000, forwardTimeoutMs:1500, postTimeoutMs:1500, tts:$tts, audio:{player:"auto"}, summarize:{mode:"heuristic", maxLen:240}}' > "$CFG"
   echo "config written: $CFG"
 fi
 
@@ -60,11 +79,8 @@ fi
 mkdir -p "$HOME/.local/bin"; cp "$ROOT/bin/herdr-voice" "$BIN"; chmod +x "$BIN"
 echo "CLI: $BIN"
 
-# 4) launchd agent (shared template, role-specific daemon)
-sed -e "s#@NODE@#$NODE#g" -e "s#@APP@#$APP#g" -e "s#@DAEMON@#$DAEMON#g" \
-  "$ROOT/launchd/dev.herdr-voice.plist.tmpl" > "$PLIST"
-launchctl unload "$PLIST" 2>/dev/null || true
-launchctl load -w "$PLIST"; sleep 1
+# 4) install + start daemon (OS-dispatched: launchd on macOS, systemd --user on Linux)
+svc_install "$DAEMON"; sleep 1
 
 # 5) host-only: health check + Claude hooks + herdr plugin
 if [ "$MODE" = host ]; then
