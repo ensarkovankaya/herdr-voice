@@ -33,6 +33,22 @@ export function extractLastAssistantText(jsonl) {
   return '';
 }
 
+// Walk the JSONL transcript backwards and return the most recent session title
+// (Claude's auto-generated `ai-title` line); '' if none is present.
+export function extractSessionTitle(jsonl) {
+  const lines = jsonl.split('\n');
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    let o;
+    try { o = JSON.parse(line); } catch { continue; }
+    if (o && o.type === 'ai-title' && typeof o.aiTitle === 'string' && o.aiTitle.trim()) {
+      return o.aiTitle.trim();
+    }
+  }
+  return '';
+}
+
 // The Stop hook can fire before Claude has finished flushing the final
 // assistant message to the transcript, so a naive read returns the PREVIOUS
 // turn's text (off-by-one). Wait until the file size stops changing (the write
@@ -86,8 +102,14 @@ async function main() {
   });
   const text = await summarize(extractLastAssistantText(jsonl), cfg);
   const sessionId = input.session_id || (input.transcript_path || '').split('/').pop().replace(/\.jsonl$/, '');
+  const sessionTitle = extractSessionTitle(jsonl);
   try {
-    await postJson(`http://${cfg.host}:${cfg.port}/speak`, { text, sessionId, pane: process.env.HERDR_PANE_ID || '' }, { token: cfg.token, timeoutMs: cfg.postTimeoutMs });
+    await postJson(`http://${cfg.host}:${cfg.port}/speak`, {
+      text, sessionId, sessionTitle,
+      workspace: process.env.HERDR_WORKSPACE_ID || '',
+      tab: process.env.HERDR_TAB_ID || '',
+      pane: process.env.HERDR_PANE_ID || '',
+    }, { token: cfg.token, timeoutMs: cfg.postTimeoutMs });
   } catch { /* swallow */ }
 }
 

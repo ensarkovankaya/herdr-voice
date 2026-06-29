@@ -1,5 +1,6 @@
 {
   "cue": "Approval needed.",
+  "cueIdle": "Waiting for you.",
   "fallback": "Done.",
   "voiceOn": "Voice on.",
   "voiceOff": "Voice off."

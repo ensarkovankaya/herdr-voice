@@ -71,28 +71,31 @@ test('wrong token → 401', async () => {
   s.close();
 });
 
-test('SPEAK log carries session/pane fields', async () => {
+test('SPEAK log carries session + herd meta fields', async () => {
   const logs = [];
   const { s, port } = await start(makeRouter({
     getConfig: cfgOf(), speak: () => {}, forward: () => Promise.resolve(), now: () => 0,
     log: (level, event, fields = {}) => logs.push({ level, event, ...fields }) }));
-  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'hi', sessionId: 'abcd1234ef', pane: 'w1:p4' }, { token: 'T' });
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'hi', sessionId: 'abcd1234ef', sessionTitle: 'My Title', workspace: 'ws1', tab: 't1', pane: 'w1:p4' }, { token: 'T' });
   await flush();
   const rec = logs.find((e) => e.event === 'speak');
   assert.ok(rec, JSON.stringify(logs));
   assert.equal(rec.sessionId, 'abcd1234ef');
+  assert.equal(rec.sessionTitle, 'My Title');
+  assert.equal(rec.workspace, 'ws1');
+  assert.equal(rec.tab, 't1');
   assert.equal(rec.pane, 'w1:p4');
   s.close();
 });
 
-test('forward receives session/pane meta', async () => {
+test('forward receives full session + herd meta', async () => {
   let gotMeta;
   const { s, port } = await start(makeRouter({
     getConfig: cfgOf(), speak: () => {},
     forward: (ip, p, t, meta) => { gotMeta = meta; return Promise.resolve(); }, now: () => 0, log: noLog }));
   await postJson(`http://127.0.0.1:${port}/register`, { ip: '1.2.3.4' }, { token: 'T' });
-  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'x', sessionId: 's1', pane: 'p1' }, { token: 'T' });
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'x', sessionId: 's1', sessionTitle: 'My Title', workspace: 'ws1', tab: 't1', pane: 'p1' }, { token: 'T' });
   await flush();
-  assert.deepEqual(gotMeta, { sessionId: 's1', pane: 'p1' });
+  assert.deepEqual(gotMeta, { sessionId: 's1', sessionTitle: 'My Title', workspace: 'ws1', tab: 't1', pane: 'p1' });
   s.close();
 });

@@ -3,9 +3,20 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
-import { extractLastAssistantText, readSettledFile } from '../src/speak-summary.mjs';
+import { extractLastAssistantText, extractSessionTitle, readSettledFile } from '../src/speak-summary.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
+
+test('extractSessionTitle returns the latest ai-title, empty when none', () => {
+  const jsonl = [
+    JSON.stringify({ type: 'ai-title', aiTitle: 'First title', sessionId: 's' }),
+    JSON.stringify({ type: 'assistant', message: { role: 'assistant', content: 'hi' } }),
+    JSON.stringify({ type: 'ai-title', aiTitle: 'Updated title', sessionId: 's' }),
+  ].join('\n');
+  assert.equal(extractSessionTitle(jsonl), 'Updated title');
+  assert.equal(extractSessionTitle('{"type":"user","message":{}}'), '');
+  assert.equal(extractSessionTitle('MALFORMED LINE'), '');
+});
 
 test('skips a tool_use-only last line, takes the last assistant text message', () => {
   const jsonl = readFileSync(join(here, 'fixtures', 'transcript.jsonl'), 'utf8');

@@ -18,13 +18,16 @@ test('writes one JSON object per line with ts/level/event + fields', () => {
   assert.match(rec.ts, /^\d{4}-\d{2}-\d{2}T.*Z$/);
 });
 
-test('omits null/undefined fields', () => {
+test('omits empty/null/undefined fields, keeps false and 0', () => {
   const f = mkfile();
-  makeLogger({ file: f })('INFO', 'forward', { text: 'hi', sessionId: undefined, pane: null });
+  makeLogger({ file: f })('INFO', 'forward', { text: 'hi', sessionId: undefined, pane: null, workspace: '', enabled: false, n: 0 });
   const rec = JSON.parse(readFileSync(f, 'utf8').trim());
   assert.equal(rec.text, 'hi');
   assert.ok(!('sessionId' in rec));
   assert.ok(!('pane' in rec));
+  assert.ok(!('workspace' in rec));   // '' dropped
+  assert.equal(rec.enabled, false);   // false kept
+  assert.equal(rec.n, 0);             // 0 kept
 });
 
 test('each line is independently parseable (NDJSON)', () => {

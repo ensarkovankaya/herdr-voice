@@ -1,5 +1,6 @@
 {
   "cue": "Onayın gerekiyor.",
+  "cueIdle": "Seni bekliyorum.",
   "fallback": "Tamamlandı.",
   "voiceOn": "Ses açıldı.",
   "voiceOff": "Ses kapandı."

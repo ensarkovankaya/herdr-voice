@@ -45,6 +45,7 @@ export function loadConfig() {
   merged.summarize = { ...SUMMARIZE_DEFAULTS, ...(raw.summarize || {}) };
   const pack = stringsFor(merged.language);
   merged.cue = raw.cue ?? pack.cue;
+  merged.cueIdle = raw.cueIdle ?? pack.cueIdle;
   merged.fallback = raw.fallback ?? pack.fallback;
   merged.voiceOnText = raw.voiceOnText ?? pack.voiceOn;
   merged.voiceOffText = raw.voiceOffText ?? pack.voiceOff;

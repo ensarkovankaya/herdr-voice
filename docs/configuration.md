@@ -26,12 +26,14 @@ request — **TTS provider changes are the exception** and need
 | `remoteTtlMs`                  | `3600000`                                   | Safety expiry for a remote registration (1 h).                                                                       |
 | `forwardTimeoutMs`             | `1500`                                      | Router→sink forward timeout (ms). On timeout the router falls back to local.                                         |
 | `postTimeoutMs`                | `1500`                                      | Hook→router POST timeout (ms).                                                                                       |
-| `cue`                          | *(from pack)*                               | Spoken when approval/input is needed.                                                                                |
+| `cue`                          | *(from pack)*                               | Spoken on a permission prompt (and any non-idle notification).                                                       |
+| `cueIdle`                      | *(from pack)*                               | Spoken when Claude goes idle waiting for you (`idle_prompt`). Falls back to `cue` if unset.                          |
 | `fallback`                     | *(from pack)*                               | Spoken when the summary is empty.                                                                                    |
 | `voiceOnText` / `voiceOffText` | *(from pack)*                               | Spoken when toggling voice on/off.                                                                                   |
 
-Any spoken string can be overridden individually: set `cue`, `fallback`,
-`voiceOnText`, or `voiceOffText` in the file and it wins over the language pack.
+Any spoken string can be overridden individually: set `cue`, `cueIdle`,
+`fallback`, `voiceOnText`, or `voiceOffText` in the file and it wins over the
+language pack.
 
 ## `tts` — speech engine
 
@@ -114,6 +116,7 @@ the fixed `fallback` string. Full details and recipes:
 | Key        | `en`               | `tr`                |
 | ---------- | ------------------ | ------------------- |
 | `cue`      | "Approval needed." | "Onayın gerekiyor." |
+| `cueIdle`  | "Waiting for you." | "Seni bekliyorum."  |
 | `fallback` | "Done."            | "Tamamlandı."       |
 | `voiceOn`  | "Voice on."        | "Ses açıldı."       |
 | `voiceOff` | "Voice off."       | "Ses kapandı."      |

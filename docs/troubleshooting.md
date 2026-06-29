@@ -172,6 +172,7 @@ jq -c 'select(.sessionId | startswith("a6aff93b"))' ~/.herdr-voice/logs/herdr-vo
 jq -c 'select(.event | test("register|forward|fallback"))' ~/.herdr-voice/logs/herdr-voice.log   # routing
 ```
 
-`speak`/`forward` events carry `sessionId`/`pane` fields so you can tell which
-session is talking. `WARN` lines name the failing component via `event`
-(`tts_error`, `gemini_error`, `presence_failed`), with details in the fields.
+`speak`/`forward` events carry `sessionId`, `sessionTitle` (summary events only),
+and the herd `workspace`/`tab`/`pane` ids so you can tell which session is
+talking. `WARN` lines name the failing component via `event` (`tts_error`,
+`gemini_error`, `presence_failed`), with details in the fields.

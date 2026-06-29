@@ -3,8 +3,12 @@ import { loadConfig } from './lib/config.mjs';
 import { postJson } from './lib/http.mjs';
 import { voiceEnabledForPane } from './lib/pane.mjs';
 
-// The cue is a fixed phrase from config; the hook input is ignored.
-export function cueFor(_input, cfg) {
+// Pick the spoken cue by Notification kind: `idle_prompt` (Claude is idle,
+// waiting for the user) gets `cueIdle`; permission prompts and every other type
+// get the default `cue`. Falls back to `cue` when `cueIdle` is unset.
+export function cueFor(input, cfg) {
+  const kind = (input && (input.notification_type || input.type)) || '';
+  if (kind === 'idle_prompt' && cfg.cueIdle) return cfg.cueIdle;
   return cfg.cue;
 }
 
@@ -27,7 +31,12 @@ async function main() {
   try { input = JSON.parse(await readStdin()); } catch { /* still send the fixed cue */ }
   const sessionId = (input && input.session_id) || '';
   try {
-    await postJson(`http://${cfg.host}:${cfg.port}/speak`, { text: cueFor(input, cfg), sessionId, pane: process.env.HERDR_PANE_ID || '' }, { token: cfg.token, timeoutMs: cfg.postTimeoutMs });
+    await postJson(`http://${cfg.host}:${cfg.port}/speak`, {
+      text: cueFor(input, cfg), sessionId,
+      workspace: process.env.HERDR_WORKSPACE_ID || '',
+      tab: process.env.HERDR_TAB_ID || '',
+      pane: process.env.HERDR_PANE_ID || '',
+    }, { token: cfg.token, timeoutMs: cfg.postTimeoutMs });
   } catch { /* swallow */ }
 }
 

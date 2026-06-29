@@ -15,16 +15,16 @@ export function makeRouter({ getConfig, speak, forward, now = Date.now, log }) {
   // Forward to the registered remote sink while its registration is live;
   // otherwise — or if forwarding fails — speak locally.
   function route(text, cfg, meta) {
-    const { sessionId, pane } = meta || {};
+    const m = meta || {};
     if (remote && now() < remote.expiresAt) {
       const { ip, port } = remote;
       const target = `${ip}:${port}`;
-      log('INFO', 'forward', { text: (text || '').slice(0, 120), target, sessionId, pane });
+      log('INFO', 'forward', { text: (text || '').slice(0, 120), target, ...m });
       Promise.resolve()
         .then(() => forward(ip, port, text, meta))
-        .catch(() => { remote = null; log('WARN', 'fallback_local', { target, sessionId, pane }); speak(text); });
+        .catch(() => { remote = null; log('WARN', 'fallback_local', { target, ...m }); speak(text); });
     } else {
-      log('INFO', 'speak', { text: (text || '').slice(0, 120), mode: 'local', sessionId, pane });
+      log('INFO', 'speak', { text: (text || '').slice(0, 120), mode: 'local', ...m });
       speak(text);
     }
   }
@@ -44,7 +44,11 @@ export function makeRouter({ getConfig, speak, forward, now = Date.now, log }) {
       return sendJson(res, 200, { ok: true, remote: { ip: remote.ip, port: remote.port } });
     }
     if (req.url === '/deregister') { remote = null; log('INFO', 'deregister'); return sendJson(res, 200, { ok: true }); }
-    if (req.url === '/speak') { sendJson(res, 202, { ok: true }); route(body.text, cfg, { sessionId: body.sessionId, pane: body.pane }); return; }
+    if (req.url === '/speak') {
+      sendJson(res, 202, { ok: true });
+      route(body.text, cfg, { sessionId: body.sessionId, sessionTitle: body.sessionTitle, workspace: body.workspace, tab: body.tab, pane: body.pane });
+      return;
+    }
     return sendJson(res, 404, { error: 'not found' });
   };
 }
@@ -58,7 +62,7 @@ function main() {
   const cfg0 = loadConfig();
   const forward = (ip, port, text, meta = {}) => {
     const c = loadConfig();
-    return postJson(`http://${ip}:${port}/speak`, { text, sessionId: meta.sessionId, pane: meta.pane }, { token: c.token, timeoutMs: c.forwardTimeoutMs })
+    return postJson(`http://${ip}:${port}/speak`, { text, ...meta }, { token: c.token, timeoutMs: c.forwardTimeoutMs })
       .then((r) => { if (r.status >= 300) throw new Error(`sink ${r.status}`); });
   };
   const handler = makeRouter({ getConfig: loadConfig, speak: makeSpeaker({ getConfig: loadConfig, log }), forward, now: Date.now, log });
