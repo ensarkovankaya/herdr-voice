@@ -1,0 +1,11 @@
+[Unit]
+Description=herdr-voice daemon
+After=network.target
+
+[Service]
+ExecStart=@NODE@ @APP@/src/@DAEMON@
+Environment=HERD_VOICE_BIND=0.0.0.0
+Restart=always
+
+[Install]
+WantedBy=default.target
