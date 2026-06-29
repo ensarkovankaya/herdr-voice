@@ -1,5 +1,8 @@
 import { heuristicSummarize, sanitizeForSpeech, shorten } from './heuristic.mjs';
 
+// Build the summarizer dispatcher. Routes to heuristic/llm/command per
+// cfg.summarize.mode, and always falls back to the heuristic on empty text, an
+// unavailable mode, or any llm/command failure.
 export function makeSummarizer({ getLlm, getCommand } = {}) {
   return async function summarize(text, cfg) {
     const maxLen = cfg.summarize.maxLen || 240;

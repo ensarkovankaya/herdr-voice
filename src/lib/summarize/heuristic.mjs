@@ -1,3 +1,5 @@
+// Strip markdown, code spans/blocks, links, and emoji so the text reads cleanly
+// aloud, then collapse whitespace.
 export function sanitizeForSpeech(text) {
   return (text || '')
     .replace(/```[\s\S]*?```/g, ' ')
@@ -13,6 +15,8 @@ export function sanitizeForSpeech(text) {
     .trim();
 }
 
+// Trim text to <= maxLen, preferring whole-sentence boundaries; if a single
+// leading sentence still overflows, hard-cut it and append an ellipsis.
 export function shorten(text, maxLen = 240) {
   const t = text || '';
   if (t.length <= maxLen) return t;
@@ -27,6 +31,7 @@ export function shorten(text, maxLen = 240) {
   return out;
 }
 
+// Default (no-LLM) summarizer: sanitize for speech, then shorten.
 export function heuristicSummarize(text, { maxLen = 240 } = {}) {
   return shorten(sanitizeForSpeech(text), maxLen);
 }

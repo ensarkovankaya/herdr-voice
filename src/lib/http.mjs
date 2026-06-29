@@ -1,5 +1,7 @@
 import http from 'node:http';
 
+// POST a JSON body to urlStr with the voice token header; resolves
+// {status, body}. Destroys the request (rejects) after timeoutMs.
 export function postJson(urlStr, body, { token = '', timeoutMs = 1500 } = {}) {
   return new Promise((resolve, reject) => {
     const u = new URL(urlStr);
@@ -22,6 +24,8 @@ export function postJson(urlStr, body, { token = '', timeoutMs = 1500 } = {}) {
   });
 }
 
+// Collect a request body and JSON.parse it. Rejects past `limit` bytes or on
+// invalid JSON; an empty body resolves to {}.
 export function readJsonBody(req, { limit = 1_000_000 } = {}) {
   return new Promise((resolve, reject) => {
     let buf = ''; let size = 0; let done = false;
@@ -40,6 +44,7 @@ export function readJsonBody(req, { limit = 1_000_000 } = {}) {
   });
 }
 
+// Write a JSON response with the given status code.
 export function sendJson(res, status, obj) {
   const data = JSON.stringify(obj ?? {});
   res.writeHead(status, { 'content-type': 'application/json' });

@@ -18,6 +18,7 @@ const TTS_DEFAULTS = {
 const AUDIO_DEFAULTS = { player: 'auto' };
 const SUMMARIZE_DEFAULTS = { mode: 'heuristic', maxLen: 240, llm: {}, command: {} };
 
+// On-disk config path; HERD_VOICE_CONFIG overrides it (used by tests).
 export function configPath() {
   return process.env.HERD_VOICE_CONFIG || join(homedir(), '.herdr-voice', 'config.json');
 }
@@ -30,6 +31,8 @@ export function migrateConfig(raw) {
   return out;
 }
 
+// Layer the user's tts settings over the defaults so every provider's block is
+// fully populated regardless of which provider is selected.
 function mergeTts(tts = {}) {
   return {
     provider: tts.provider || TTS_DEFAULTS.provider,
@@ -39,6 +42,8 @@ function mergeTts(tts = {}) {
   };
 }
 
+// Read config.json (missing/invalid -> defaults), migrate the v1 shape, then
+// layer user values over DEFAULTS and resolve the language-dependent strings.
 export function loadConfig() {
   let raw = {};
   try { raw = JSON.parse(readFileSync(configPath(), 'utf8')); } catch { /* defaults */ }

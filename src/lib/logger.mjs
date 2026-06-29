@@ -10,7 +10,11 @@ export function metaTag(meta = {}) {
   return parts.length ? ` [${parts.join(' ')}]` : '';
 }
 
+// Append-only file logger with size-based rotation (file.1 .. file.keep).
+// Returns log(level, msg); all I/O errors are swallowed so logging can never
+// crash the daemon.
 export function makeLogger({ file, maxBytes = 1_000_000, keep = 5 }) {
+  // Shift file.N -> file.N+1 and the live file -> file.1 once it exceeds maxBytes.
   function rotate() {
     try {
       if (!existsSync(file) || statSync(file).size <= maxBytes) return;

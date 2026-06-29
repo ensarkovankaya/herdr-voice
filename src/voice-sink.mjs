@@ -8,6 +8,8 @@ import { makeSpeaker } from './lib/tts/index.mjs';
 import { makeLogger, metaTag } from './lib/logger.mjs';
 import { startPresenceWatcher } from './lib/presence.mjs';
 
+// Build the remote sink's HTTP request handler: authenticates the token, then
+// speaks incoming /speak text locally (unless voice is globally disabled).
 export function makeSinkHandler({ getConfig, speak, log }) {
   return async (req, res) => {
     if (req.method === 'GET' && req.url === '/health') return sendJson(res, 200, { ok: true });
@@ -26,6 +28,8 @@ export function makeSinkHandler({ getConfig, speak, log }) {
   };
 }
 
+// Daemon entry: start the sink HTTP server and the presence watcher that
+// registers this device with the host while a remote session is active.
 function main() {
   const logFile = join(homedir(), '.herdr-voice', 'logs', 'herdr-voice.log');
   const log = makeLogger({ file: logFile });

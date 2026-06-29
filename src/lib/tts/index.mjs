@@ -7,6 +7,9 @@ const FACTORIES = {
   gemini: () => import('./providers/gemini.mjs').then((m) => m.makeGeminiProvider()),
 };
 
+// Build speak(text): serializes utterances through a promise chain (one at a
+// time), lazily instantiates and caches the configured provider, and swallows
+// provider errors so a TTS failure never breaks the caller.
 export function makeSpeaker({ getConfig, log, makeProvider, player } = {}) {
   const say = log || (() => {});
   let chain = Promise.resolve();

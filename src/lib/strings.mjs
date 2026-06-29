@@ -6,6 +6,7 @@ export const STRINGS = {
   tr: { cue: 'Onayın gerekiyor.', fallback: 'Tamamlandı.', voiceOn: 'Ses açıldı.', voiceOff: 'Ses kapandı.' },
 };
 
+// String pack for a language code, defaulting to English for unknown codes.
 export function stringsFor(language) {
   return STRINGS[language] || STRINGS.en;
 }

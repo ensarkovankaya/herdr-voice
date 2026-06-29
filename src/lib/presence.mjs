@@ -2,6 +2,8 @@ import { execFileSync } from 'node:child_process';
 import { networkInterfaces } from 'node:os';
 import { postJson } from './http.mjs';
 
+// Decide whether to (re)register, deregister, or do nothing given the current
+// remote-session presence and when we last registered (heartbeat refresh).
 export function decidePresenceAction({ active, registered, lastRegisterMs, now, heartbeatMs }) {
   if (active && (!registered || now - lastRegisterMs >= heartbeatMs)) return 'register';
   if (!active && registered) return 'deregister';
@@ -23,6 +25,8 @@ export function pickTailscaleIp(interfaces) {
   return '';
 }
 
+// True if a `herdr --remote` session is running locally (optionally matching
+// remoteHost) — i.e. the user is present at a paired remote device.
 function pgrepHerdrRemote(remoteHost) {
   try {
     const out = execFileSync('pgrep', ['-fl', 'herdr'], { encoding: 'utf8' });
@@ -31,6 +35,7 @@ function pgrepHerdrRemote(remoteHost) {
   } catch { return false; }
 }
 
+// This host's Tailscale IP: read it from the interfaces, falling back to the CLI.
 function myTailscaleIp() {
   const fromIfaces = pickTailscaleIp(networkInterfaces());
   if (fromIfaces) return fromIfaces;
@@ -39,6 +44,8 @@ function myTailscaleIp() {
   catch { return ''; }
 }
 
+// Poll for remote presence on an interval and register/deregister this sink
+// with the host router accordingly. Returns the setInterval handle.
 export function startPresenceWatcher({ getConfig, log, intervalMs = 7000, heartbeatMs = 30_000 }) {
   let registered = false;
   let lastRegisterMs = 0;

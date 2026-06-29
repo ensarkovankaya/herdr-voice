@@ -3,10 +3,12 @@ import { loadConfig } from './lib/config.mjs';
 import { postJson } from './lib/http.mjs';
 import { voiceEnabledForPane } from './lib/pane.mjs';
 
+// The cue is a fixed phrase from config; the hook input is ignored.
 export function cueFor(_input, cfg) {
   return cfg.cue;
 }
 
+// Read all of stdin to a string (the hook payload); resolves '' on error.
 function readStdin() {
   return new Promise((resolve) => {
     let buf = '';
@@ -16,6 +18,8 @@ function readStdin() {
   });
 }
 
+// Notification-hook entry: when voice is on for this pane, POST the fixed cue
+// phrase to the local router (which speaks it locally or forwards it).
 async function main() {
   const cfg = loadConfig();
   if (!voiceEnabledForPane(cfg)) return;

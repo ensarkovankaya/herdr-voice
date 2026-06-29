@@ -7,9 +7,13 @@ import { readJsonBody, sendJson, postJson } from './lib/http.mjs';
 import { makeSpeaker } from './lib/tts/index.mjs';
 import { makeLogger, metaTag } from './lib/logger.mjs';
 
+// Build the host's HTTP request handler. Holds the currently-registered remote
+// sink (if any) and routes each utterance either to it or to local TTS.
 export function makeRouter({ getConfig, speak, forward, now = Date.now, log }) {
   let remote = null; // {ip, port, expiresAt}
 
+  // Forward to the registered remote sink while its registration is live;
+  // otherwise — or if forwarding fails — speak locally.
   function route(text, cfg, meta) {
     const tag = metaTag(meta);
     if (remote && now() < remote.expiresAt) {
@@ -44,6 +48,8 @@ export function makeRouter({ getConfig, speak, forward, now = Date.now, log }) {
   };
 }
 
+// Daemon entry: start the router HTTP server with a local speaker and a
+// forwarder that POSTs to the registered remote sink.
 function main() {
   const logFile = join(homedir(), '.herdr-voice', 'logs', 'herdr-voice.log');
   const log = makeLogger({ file: logFile });

@@ -14,10 +14,14 @@ const PLAYERS = {
   ],
 };
 
+// Is `bin` reachable on PATH? Default resolver, injectable for tests.
 function defaultWhich(bin) {
   return (process.env.PATH || '').split(':').some((d) => d && existsSync(join(d, bin)));
 }
 
+// Resolve [binary, args] to play `file`: an explicit audio.player template or
+// bare binary wins, otherwise the first available platform default. Returns
+// [null, []] when nothing is found.
 export function resolvePlayer({ platform = process.platform, which = defaultWhich, audio = {} } = {}, file) {
   const cfg = audio.player;
   if (cfg && cfg !== 'auto') {
@@ -31,6 +35,8 @@ export function resolvePlayer({ platform = process.platform, which = defaultWhic
   return [null, []];
 }
 
+// Build play(file): spawns the resolved player and resolves when it exits.
+// Never rejects — a missing or failing player is a silent no-op.
 export function makePlayer({ platform = process.platform, spawn = realSpawn, which = defaultWhich, audio = {} } = {}) {
   return function play(file) {
     return new Promise((resolve) => {

@@ -1,9 +1,12 @@
+// Replace ${var} tokens from `vars`, falling back to process.env, else ''.
 function interpolate(str, vars) {
   return str.replace(/\$\{(\w+)\}/g, (_, k) => (k in vars ? vars[k] : (process.env[k] ?? '')));
 }
+// Read a dotted path (e.g. "choices.0.message.content") out of a nested object.
 function getPath(obj, path) {
   return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
 }
+// Recursively interpolate ${var} tokens through a JSON body template.
 function fillBody(body, vars) {
   if (typeof body === 'string') return interpolate(body, vars);
   if (Array.isArray(body)) return body.map((b) => fillBody(b, vars));
@@ -15,6 +18,10 @@ function fillBody(body, vars) {
   return body;
 }
 
+// Summarizer that calls an HTTP LLM endpoint described entirely by config
+// (url/method/headers and prompt/body/response templates). Aborts after
+// timeoutMs and throws on non-2xx, empty, or non-string result so the caller
+// can fall back to the heuristic.
 export function makeLlmSummarizer({ fetchImpl = globalThis.fetch } = {}) {
   return async function llmSummarize(text, cfg) {
     const c = cfg.summarize.llm || {};

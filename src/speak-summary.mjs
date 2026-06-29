@@ -7,6 +7,8 @@ import { makeCommandSummarizer } from './lib/summarize/command.mjs';
 import { postJson } from './lib/http.mjs';
 import { voiceEnabledForPane } from './lib/pane.mjs';
 
+// Walk the JSONL transcript backwards and return the most recent assistant
+// message's text (joining its text blocks); '' if none is found.
 export function extractLastAssistantText(jsonl) {
   const lines = jsonl.split('\n');
   for (let i = lines.length - 1; i >= 0; i--) {
@@ -50,6 +52,7 @@ export async function readSettledFile(path, {
   try { return read(path); } catch { return null; }
 }
 
+// Read all of stdin to a string (the hook payload); resolves '' on error.
 function readStdin() {
   return new Promise((resolve) => {
     let buf = '';
@@ -59,6 +62,8 @@ function readStdin() {
   });
 }
 
+// Stop-hook entry: read the settled transcript, summarize the last assistant
+// turn, and POST it to the local router. No-op when voice is off for this pane.
 async function main() {
   const cfg = loadConfig();
   if (!voiceEnabledForPane(cfg)) return;

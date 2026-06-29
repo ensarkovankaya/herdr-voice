@@ -3,6 +3,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pcmToWav } from '../wav.mjs';
 
+// Gemini TTS provider: POST the text to the generateContent endpoint, decode the
+// returned base64 PCM, wrap it as WAV, and play it via the injected player.
+// Missing key / HTTP / decode errors are logged and swallowed (never throws).
 export function makeGeminiProvider({
   fetchImpl = globalThis.fetch,
   writeFile = writeFileSync,

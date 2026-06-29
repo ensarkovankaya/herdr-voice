@@ -1,5 +1,9 @@
 import { spawn as realSpawn } from 'node:child_process';
 
+// Summarizer that pipes the text through an external command (e.g. `claude -p`).
+// `${text}` in args is substituted, and the text is also written to stdin when
+// cfg.stdin. Resolves trimmed stdout; rejects on spawn error, empty output, or
+// timeout (the child is killed).
 export function makeCommandSummarizer({ spawn = realSpawn } = {}) {
   return function commandSummarize(text, cfg) {
     const c = cfg.summarize.command || {};

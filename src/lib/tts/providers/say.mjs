@@ -1,5 +1,7 @@
 import { spawn as realSpawn } from 'node:child_process';
 
+// macOS `say` provider: speaks straight through the system synthesizer (no
+// separate audio player needed). Resolves when speech finishes; never rejects.
 export function makeSayProvider({ spawn = realSpawn } = {}) {
   return {
     name: 'say',
