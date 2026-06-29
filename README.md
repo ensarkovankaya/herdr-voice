@@ -144,22 +144,22 @@ ______________________________________________________________________
 
 `~/.herdr-voice/config.json` (override the path with `HERD_VOICE_CONFIG`):
 
-| Field                          | Default       | Description                                                                                                          |
-| ------------------------------ | ------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `token`                        | *(generated)* | Shared secret sent as the `X-Voice-Token` header. Same on host and remote.                                           |
-| `host`                         | `127.0.0.1`   | The **router address** this machine talks to. `127.0.0.1` on the host; the host's Tailscale IP on a remote.          |
-| `port`                         | `8973`        | Router/sink port.                                                                                                    |
-| `language`                     | `en`          | Built-in spoken-string pack: `en` or `tr`. Drives the defaults for `cue`, `fallback`, `voiceOnText`, `voiceOffText`. |
-| `enabled`                      | `false`       | Global master switch — hooks speak only when `true` (the router/sink always run).                                    |
-| `sessionDefault`               | `on`          | Under herdr, the default for a pane with no explicit override: `on` (talk) or `off` (opt-in per pane via keybind).   |
-| `role`                         | `host`        | `host` (runs the router) or `remote` (runs the sink + presence watcher).                                             |
-| `remoteHost`                   | `""`          | On a remote, scopes which `herdr --remote <host>` session counts as present (empty = any).                           |
-| `remoteTtlMs`                  | `3600000`     | Safety expiry for a remote registration.                                                                             |
-| `forwardTimeoutMs`             | `1500`        | Router→sink forward timeout.                                                                                         |
-| `postTimeoutMs`                | `1500`        | Hook→router POST timeout.                                                                                            |
-| `cue`                          | *(from pack)* | Spoken when approval/input is needed.                                                                                |
-| `fallback`                     | *(from pack)* | Spoken when the summary is empty.                                                                                    |
-| `voiceOnText` / `voiceOffText` | *(from pack)* | Spoken when toggling voice on/off.                                                                                   |
+| Field                          | Default                                                                                        | Description                                                                                                          |
+| ------------------------------ | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `token`                        | *(generated)*                                                                                  | Shared secret sent as the `X-Voice-Token` header. Same on host and remote.                                           |
+| `host`                         | `127.0.0.1`                                                                                    | The **router address** this machine talks to. `127.0.0.1` on the host; the host's Tailscale IP on a remote.          |
+| `port`                         | `8973`                                                                                         | Router/sink port.                                                                                                    |
+| `language`                     | `en`                                                                                           | Built-in spoken-string pack: `en` or `tr`. Drives the defaults for `cue`, `fallback`, `voiceOnText`, `voiceOffText`. |
+| `enabled`                      | `true` *(set by the installer; the bare `loadConfig` fallback with no config file is `false`)* | Global master switch — hooks speak only when `true` (the router/sink always run).                                    |
+| `sessionDefault`               | `on`                                                                                           | Under herdr, the default for a pane with no explicit override: `on` (talk) or `off` (opt-in per pane via keybind).   |
+| `role`                         | `host`                                                                                         | `host` (runs the router) or `remote` (runs the sink + presence watcher).                                             |
+| `remoteHost`                   | `""`                                                                                           | On a remote, scopes which `herdr --remote <host>` session counts as present (empty = any).                           |
+| `remoteTtlMs`                  | `3600000`                                                                                      | Safety expiry for a remote registration.                                                                             |
+| `forwardTimeoutMs`             | `1500`                                                                                         | Router→sink forward timeout.                                                                                         |
+| `postTimeoutMs`                | `1500`                                                                                         | Hook→router POST timeout.                                                                                            |
+| `cue`                          | *(from pack)*                                                                                  | Spoken when approval/input is needed.                                                                                |
+| `fallback`                     | *(from pack)*                                                                                  | Spoken when the summary is empty.                                                                                    |
+| `voiceOnText` / `voiceOffText` | *(from pack)*                                                                                  | Spoken when toggling voice on/off.                                                                                   |
 
 Any spoken string can be overridden individually — set the field in `config.json` and it wins over the language pack.
 
