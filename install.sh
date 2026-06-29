@@ -33,6 +33,8 @@ echo "mode: $MODE | node: $NODE"
 # 1) app dir + copy daemons (shared)
 mkdir -p "$APP/src" "$APP/logs"
 cp -R "$ROOT/src/." "$APP/src/"
+mkdir -p "$APP/bin/lib"
+cp "$ROOT/bin/lib/service.sh" "$APP/bin/lib/service.sh"
 
 # 2) config + pick the daemon (role-specific)
 if [ "$MODE" = host ]; then
@@ -80,6 +82,14 @@ mkdir -p "$HOME/.local/bin"; cp "$ROOT/bin/herdr-voice" "$BIN"; chmod +x "$BIN"
 echo "CLI: $BIN"
 
 # 4) install + start daemon (OS-dispatched: launchd on macOS, systemd --user on Linux)
+# Inject env into the unit/plist: svc_install always adds PATH; for gemini, also
+# pass the configured key env var if it is set in the installer's environment.
+EXTRA=""
+if [ "${PROVIDER:-}" = gemini ]; then
+  KV="$(printenv "${KEYENV:-GEMINI_API_KEY}" 2>/dev/null || true)"
+  [ -n "$KV" ] && EXTRA="${KEYENV:-GEMINI_API_KEY}=$KV"
+fi
+export SVC_EXTRA_ENV="$EXTRA"
 svc_install "$DAEMON"; sleep 1
 
 # 5) host-only: health check + Claude hooks + herdr plugin

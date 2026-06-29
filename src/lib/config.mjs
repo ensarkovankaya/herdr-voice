@@ -47,8 +47,6 @@ export function loadConfig() {
   merged.tts = mergeTts(raw.tts);
   merged.audio = { ...AUDIO_DEFAULTS, ...(raw.audio || {}) };
   merged.summarize = { ...SUMMARIZE_DEFAULTS, ...(raw.summarize || {}) };
-  // Backward compat: v1 code reads c.voice; alias to tts.say.voice.
-  merged.voice = merged.tts.say.voice;
   const pack = stringsFor(merged.language);
   merged.cue = raw.cue ?? pack.cue;
   merged.fallback = raw.fallback ?? pack.fallback;

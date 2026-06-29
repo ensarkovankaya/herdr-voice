@@ -5,6 +5,7 @@ After=network.target
 [Service]
 ExecStart=@NODE@ @APP@/src/@DAEMON@
 Environment=HERD_VOICE_BIND=0.0.0.0
+@ENVLINES@
 Restart=always
 
 [Install]

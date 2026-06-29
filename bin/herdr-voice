@@ -8,7 +8,7 @@ LABEL="dev.herdr-voice"
 die(){ echo "herdr-voice: $*" >&2; exit 1; }
 [ -f "$CFG" ] || die "no config: $CFG (run install first)"
 role(){ jq -r '.role // "host"' "$CFG"; }
-voice(){ jq -r '.voice // "Samantha"' "$CFG"; }
+provider(){ jq -r '.tts.provider // "say"' "$CFG"; }
 lang(){ jq -r '.language // "en"' "$CFG"; }
 # Resolve a spoken string: explicit config field wins, else the language pack.
 # $1=config field, $2=English default, $3=Turkish default
@@ -28,7 +28,7 @@ case "${1:-status}" in
   restart) svc_restart; echo "restarted" ;;
   status)
     st="$(svc_status)"
-    echo "herdr-voice: $st | role=$(role) | enabled=$(jq -r '.enabled // false' "$CFG") | voice=$(voice)"
+    echo "herdr-voice: $st | role=$(role) | enabled=$(jq -r '.enabled // false' "$CFG") | provider=$(provider)"
     [ "$(role)" = "remote" ] && echo "last registration: $(grep -E 'REGISTER|DEREGISTER' "$LOG" 2>/dev/null | tail -1 || echo '-')"
     echo "--- recent log ---"; tail -n 10 "$LOG" 2>/dev/null || echo "(no log)" ;;
   logs)    tail -f "$LOG" ;;

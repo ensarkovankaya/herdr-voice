@@ -17,7 +17,7 @@ const cfgOf = (over = {}) => () => ({ token: 'T', voice: 'Samantha', remoteTtlMs
 test('no remote → local speak', async () => {
   const spoken = [];
   const { s, port } = await start(makeRouter({
-    getConfig: cfgOf({ voice: 'Alex' }), speak: (t) => spoken.push(t),
+    getConfig: cfgOf(), speak: (t) => spoken.push(t),
     forward: () => Promise.resolve(), now: () => 0, log: noLog }));
   await postJson(`http://127.0.0.1:${port}/speak`, { text: 'local' }, { token: 'T' });
   await flush();

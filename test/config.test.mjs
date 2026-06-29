@@ -22,7 +22,7 @@ test('missing file → defaults (English pack, role=host)', () => {
   const c = loadConfig();
   assert.equal(c.port, 8973);
   assert.equal(c.language, 'en');
-  assert.equal(c.voice, 'Samantha');
+  assert.equal(c.tts.say.voice, 'Samantha');
   assert.equal(c.enabled, false);
   assert.equal(c.role, 'host');
   assert.equal(c.remoteHost, '');
@@ -39,7 +39,7 @@ test('partial file merges over defaults', () => {
   assert.equal(c.role, 'remote');
   assert.equal(c.remoteHost, 'mac-host');
   assert.equal(c.port, 9001);
-  assert.equal(c.voice, 'Samantha');
+  assert.equal(c.tts.say.voice, 'Samantha');
 });
 
 test('language=tr selects the Turkish spoken-string pack', () => {
