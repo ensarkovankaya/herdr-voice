@@ -1,7 +1,9 @@
 import { readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from './lib/config.mjs';
-import { summarize } from './lib/summarize.mjs';
+import { makeSummarizer } from './lib/summarize/index.mjs';
+import { makeLlmSummarizer } from './lib/summarize/llm.mjs';
+import { makeCommandSummarizer } from './lib/summarize/command.mjs';
 import { postJson } from './lib/http.mjs';
 import { voiceEnabledForPane } from './lib/pane.mjs';
 
@@ -65,7 +67,11 @@ async function main() {
   if (!input.transcript_path) return;
   const jsonl = await readSettledFile(input.transcript_path);
   if (jsonl == null) return;
-  const text = summarize(extractLastAssistantText(jsonl), { fallback: cfg.fallback });
+  const summarize = makeSummarizer({
+    getLlm: () => makeLlmSummarizer(),
+    getCommand: () => makeCommandSummarizer(),
+  });
+  const text = await summarize(extractLastAssistantText(jsonl), cfg);
   const sessionId = input.session_id || (input.transcript_path || '').split('/').pop().replace(/\.jsonl$/, '');
   try {
     await postJson(`http://${cfg.host}:${cfg.port}/speak`, { text, sessionId, pane: process.env.HERDR_PANE_ID || '' }, { token: cfg.token, timeoutMs: cfg.postTimeoutMs });
