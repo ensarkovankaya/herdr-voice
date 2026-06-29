@@ -83,8 +83,8 @@ You can watch this on the host:
 tail -f ~/.herdr-voice/logs/herdr-voice.log | grep -iE 'register|forward'
 ```
 
-A live pairing looks like `REGISTER 100.x.y.z:8973` followed by
-`FORWARD … -> 100.x.y.z:8973` lines while you work.
+A live pairing looks like a `register` event (`"ip":"100.x.y.z"`) followed by
+`forward` events (`"target":"100.x.y.z:8973"`) while you work.
 
 ## Troubleshooting remote routing
 

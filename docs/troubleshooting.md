@@ -164,12 +164,14 @@ If a keybind does nothing, confirm the action id (`herdr-voice.toggle` /
 
 ## Reading the log
 
+Each line is one JSON object (NDJSON) — parse with `jq`:
+
 ```sh
-herdr-voice logs                                            # tail -f the app log
-grep 'sess:a6aff93b' ~/.herdr-voice/logs/herdr-voice.log    # one Claude session's lines
-grep -iE 'register|forward|fallback' ~/.herdr-voice/logs/herdr-voice.log   # routing
+herdr-voice logs                                                                      # tail -f the app log
+jq -c 'select(.sessionId | startswith("a6aff93b"))' ~/.herdr-voice/logs/herdr-voice.log   # one Claude session
+jq -c 'select(.event | test("register|forward|fallback"))' ~/.herdr-voice/logs/herdr-voice.log   # routing
 ```
 
-`SPEAK`/`FORWARD` lines carry a `[sess:… pane:…]` tag so you can tell which
-session is talking. `WARN` lines name the failing component (`tts say: …`,
-`gemini: …`, `presence register failed: …`).
+`speak`/`forward` events carry `sessionId`/`pane` fields so you can tell which
+session is talking. `WARN` lines name the failing component via `event`
+(`tts_error`, `gemini_error`, `presence_failed`), with details in the fields.

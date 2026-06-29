@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { loadConfig } from './lib/config.mjs';
 import { readJsonBody, sendJson } from './lib/http.mjs';
 import { makeSpeaker } from './lib/tts/index.mjs';
-import { makeLogger, metaTag } from './lib/logger.mjs';
+import { makeLogger } from './lib/logger.mjs';
 import { startPresenceWatcher } from './lib/presence.mjs';
 
 // Build the remote sink's HTTP request handler: authenticates the token, then
@@ -18,9 +18,9 @@ export function makeSinkHandler({ getConfig, speak, log }) {
       if ((req.headers['x-voice-token'] || '') !== cfg.token) return sendJson(res, 401, { error: 'unauthorized' });
       let body;
       try { body = await readJsonBody(req); } catch { return sendJson(res, 400, { error: 'bad json' }); }
-      if (!cfg.enabled) { log('INFO', 'SPEAK skipped (disabled)'); return sendJson(res, 200, { skipped: true }); }
+      if (!cfg.enabled) { log('INFO', 'speak_skipped', { reason: 'disabled' }); return sendJson(res, 200, { skipped: true }); }
       sendJson(res, 202, { ok: true });
-      log('INFO', `SPEAK${metaTag({ sessionId: body.sessionId, pane: body.pane })} "${(body.text || '').slice(0, 200)}"`);
+      log('INFO', 'speak', { text: (body.text || '').slice(0, 200), sessionId: body.sessionId, pane: body.pane });
       speak(body.text);
       return;
     }
@@ -36,9 +36,9 @@ function main() {
   const bind = process.env.HERD_VOICE_BIND || '0.0.0.0';
   const cfg0 = loadConfig();
   const handler = makeSinkHandler({ getConfig: loadConfig, speak: makeSpeaker({ getConfig: loadConfig, log }), log });
-  http.createServer(handler).listen(cfg0.port, bind, () => log('INFO', `START voice-sink ${bind}:${cfg0.port}`));
+  http.createServer(handler).listen(cfg0.port, bind, () => log('INFO', 'start', { service: 'voice-sink', bind, port: cfg0.port }));
   startPresenceWatcher({ getConfig: loadConfig, log });
-  process.on('SIGTERM', () => { log('INFO', 'STOP voice-sink'); process.exit(0); });
+  process.on('SIGTERM', () => { log('INFO', 'stop', { service: 'voice-sink' }); process.exit(0); });
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) main();

@@ -57,16 +57,16 @@ export function startPresenceWatcher({ getConfig, log, intervalMs = 7000, heartb
     try {
       if (action === 'register') {
         const ip = myTailscaleIp();
-        if (!ip) { log('WARN', 'presence register skipped: no Tailscale IP found'); return; }
+        if (!ip) { log('WARN', 'presence_register_skipped', { reason: 'no_tailscale_ip' }); return; }
         await postJson(`${base}/register`, { ip, port: cfg.port }, { token: cfg.token, timeoutMs: cfg.postTimeoutMs });
-        if (!registered) log('INFO', `REGISTER ${ip}:${cfg.port} -> ${base}`);
+        if (!registered) log('INFO', 'presence_register', { ip, port: cfg.port, target: base });
         registered = true; lastRegisterMs = Date.now();
       } else if (action === 'deregister') {
         await postJson(`${base}/deregister`, {}, { token: cfg.token, timeoutMs: cfg.postTimeoutMs });
-        log('INFO', `DEREGISTER -> ${base}`);
+        log('INFO', 'presence_deregister', { target: base });
         registered = false;
       }
-    } catch (e) { log('WARN', `presence ${action} failed: ${e.message}`); }
+    } catch (e) { log('WARN', 'presence_failed', { action, error: e.message }); }
   };
   const handle = setInterval(tick, intervalMs);
   tick();

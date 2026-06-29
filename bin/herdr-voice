@@ -33,13 +33,13 @@ case "${1:-status}" in
   status)
     st="$(svc_status)"
     echo "herdr-voice: $st | role=$(role) | enabled=$(jq -r '.enabled // false' "$CFG") | provider=$(provider)"
-    [ "$(role)" = "remote" ] && echo "last registration: $(grep -E 'REGISTER|DEREGISTER' "$LOG" 2>/dev/null | tail -1 || echo '-')"
+    [ "$(role)" = "remote" ] && echo "last registration: $(grep -E '"event":"[a-z_]*register"' "$LOG" 2>/dev/null | tail -1 || echo '-')"
     echo "--- recent log ---"; tail -n 10 "$LOG" 2>/dev/null || echo "(no log)" ;;
   logs)    tail -f "$LOG" ;;
   enable|disable)
     new=$([ "$1" = enable ] && echo true || echo false)
     tmp=$(mktemp); jq --argjson e "$new" '.enabled=$e' "$CFG" > "$tmp" && mv -f "$tmp" "$CFG"
-    printf '[%s] [INFO] %s (cli)\n' "$(date -u +%FT%TZ)" "$([ "$new" = true ] && echo ENABLE || echo DISABLE)" >> "$LOG"
+    jq -nc --arg ts "$(date -u +%FT%TZ)" --argjson enabled "$new" '{ts:$ts,level:"INFO",event:"toggle",enabled:$enabled,source:"cli"}' >> "$LOG"
     msg=$([ "$new" = true ] && hv_str voiceOnText voiceOn || hv_str voiceOffText voiceOff)
     HOST=$(jq -r '.host // "127.0.0.1"' "$CFG"); PORT=$(jq -r '.port // 8973' "$CFG"); TOK=$(jq -r '.token // ""' "$CFG")
     curl -fsS -X POST "http://$HOST:$PORT/speak" -H "X-Voice-Token: $TOK" -H 'Content-Type: application/json' \

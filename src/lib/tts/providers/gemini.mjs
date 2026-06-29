@@ -18,7 +18,7 @@ export function makeGeminiProvider({
       const say = log || (() => {});
       const { model, voice, apiKeyEnv, languageCode } = cfg.tts.gemini;
       const key = process.env[apiKeyEnv];
-      if (!key) { say('WARN', `gemini: env ${apiKeyEnv} not set`); return; }
+      if (!key) { say('WARN', 'gemini_no_key', { env: apiKeyEnv }); return; }
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
       const speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } };
       if (languageCode) speechConfig.languageCode = languageCode;
@@ -26,11 +26,11 @@ export function makeGeminiProvider({
       let data;
       try {
         const res = await fetchImpl(url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify(body) });
-        if (!res.ok) { say('WARN', `gemini: HTTP ${res.status}`); return; }
+        if (!res.ok) { say('WARN', 'gemini_http_error', { status: res.status }); return; }
         const json = await res.json();
         data = json?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      } catch (e) { say('WARN', `gemini: ${e.message}`); return; }
-      if (!data) { say('WARN', 'gemini: no audio in response'); return; }
+      } catch (e) { say('WARN', 'gemini_error', { error: e.message }); return; }
+      if (!data) { say('WARN', 'gemini_no_audio'); return; }
       const wavBuf = pcmToWav(Buffer.from(data, 'base64'), { sampleRate: 24000, channels: 1, bitDepth: 16 });
       const dir = mkdtemp();
       const wav = join(dir, 'out.wav');

@@ -1,18 +1,10 @@
 import { appendFileSync, statSync, renameSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-// Build a " [sess:abcd1234 pane:w…:p4]" tag for log lines from optional
-// identifiers. Empty fields are skipped; returns '' when nothing is known.
-export function metaTag(meta = {}) {
-  const parts = [];
-  if (meta && meta.sessionId) parts.push(`sess:${String(meta.sessionId).slice(0, 8)}`);
-  if (meta && meta.pane) parts.push(`pane:${meta.pane}`);
-  return parts.length ? ` [${parts.join(' ')}]` : '';
-}
-
-// Append-only file logger with size-based rotation (file.1 .. file.keep).
-// Returns log(level, msg); all I/O errors are swallowed so logging can never
-// crash the daemon.
+// Append-only JSON-lines logger with size-based rotation (file.1 .. file.keep).
+// Each call writes one JSON object per line: {ts, level, event, ...fields}.
+// Returns log(level, event, fields?); null/undefined fields are dropped. All
+// I/O errors are swallowed so logging can never crash the daemon.
 export function makeLogger({ file, maxBytes = 1_000_000, keep = 5 }) {
   // Shift file.N -> file.N+1 and the live file -> file.1 once it exceeds maxBytes.
   function rotate() {
@@ -24,11 +16,15 @@ export function makeLogger({ file, maxBytes = 1_000_000, keep = 5 }) {
       renameSync(file, `${file}.1`);
     } catch { /* swallow */ }
   }
-  return function log(level, msg) {
+  return function log(level, event, fields = {}) {
     try {
+      const rec = { ts: new Date().toISOString(), level, event };
+      for (const [k, v] of Object.entries(fields)) {
+        if (v !== undefined && v !== null) rec[k] = v;
+      }
       mkdirSync(dirname(file), { recursive: true });
       rotate();
-      appendFileSync(file, `[${new Date().toISOString()}] [${level}] ${msg}\n`);
+      appendFileSync(file, `${JSON.stringify(rec)}\n`);
     } catch { /* swallow */ }
   };
 }

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { loadConfig } from './lib/config.mjs';
 import { readJsonBody, sendJson, postJson } from './lib/http.mjs';
 import { makeSpeaker } from './lib/tts/index.mjs';
-import { makeLogger, metaTag } from './lib/logger.mjs';
+import { makeLogger } from './lib/logger.mjs';
 
 // Build the host's HTTP request handler. Holds the currently-registered remote
 // sink (if any) and routes each utterance either to it or to local TTS.
@@ -15,15 +15,16 @@ export function makeRouter({ getConfig, speak, forward, now = Date.now, log }) {
   // Forward to the registered remote sink while its registration is live;
   // otherwise — or if forwarding fails — speak locally.
   function route(text, cfg, meta) {
-    const tag = metaTag(meta);
+    const { sessionId, pane } = meta || {};
     if (remote && now() < remote.expiresAt) {
       const { ip, port } = remote;
-      log('INFO', `FORWARD${tag} "${(text || '').slice(0, 120)}" -> ${ip}:${port}`);
+      const target = `${ip}:${port}`;
+      log('INFO', 'forward', { text: (text || '').slice(0, 120), target, sessionId, pane });
       Promise.resolve()
         .then(() => forward(ip, port, text, meta))
-        .catch(() => { remote = null; log('WARN', `FALLBACK local${tag} (forward ${ip}:${port} failed)`); speak(text); });
+        .catch(() => { remote = null; log('WARN', 'fallback_local', { target, sessionId, pane }); speak(text); });
     } else {
-      log('INFO', `SPEAK${tag} "${(text || '').slice(0, 120)}" (local)`);
+      log('INFO', 'speak', { text: (text || '').slice(0, 120), mode: 'local', sessionId, pane });
       speak(text);
     }
   }
@@ -39,10 +40,10 @@ export function makeRouter({ getConfig, speak, forward, now = Date.now, log }) {
     if (req.url === '/register') {
       if (!body.ip) return sendJson(res, 400, { error: 'ip required' });
       remote = { ip: body.ip, port: body.port || 8973, expiresAt: now() + (body.ttlMs || cfg.remoteTtlMs) };
-      log('INFO', `REGISTER ${remote.ip}:${remote.port}`);
+      log('INFO', 'register', { ip: remote.ip, port: remote.port });
       return sendJson(res, 200, { ok: true, remote: { ip: remote.ip, port: remote.port } });
     }
-    if (req.url === '/deregister') { remote = null; log('INFO', 'DEREGISTER'); return sendJson(res, 200, { ok: true }); }
+    if (req.url === '/deregister') { remote = null; log('INFO', 'deregister'); return sendJson(res, 200, { ok: true }); }
     if (req.url === '/speak') { sendJson(res, 202, { ok: true }); route(body.text, cfg, { sessionId: body.sessionId, pane: body.pane }); return; }
     return sendJson(res, 404, { error: 'not found' });
   };
@@ -61,8 +62,8 @@ function main() {
       .then((r) => { if (r.status >= 300) throw new Error(`sink ${r.status}`); });
   };
   const handler = makeRouter({ getConfig: loadConfig, speak: makeSpeaker({ getConfig: loadConfig, log }), forward, now: Date.now, log });
-  http.createServer(handler).listen(cfg0.port, bind, () => log('INFO', `START voice-router ${bind}:${cfg0.port}`));
-  process.on('SIGTERM', () => { log('INFO', 'STOP voice-router'); process.exit(0); });
+  http.createServer(handler).listen(cfg0.port, bind, () => log('INFO', 'start', { service: 'voice-router', bind, port: cfg0.port }));
+  process.on('SIGTERM', () => { log('INFO', 'stop', { service: 'voice-router' }); process.exit(0); });
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) main();

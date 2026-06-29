@@ -53,7 +53,8 @@ else
 fi
 
 if [ "$new" = true ]; then printf '\033]0;🔈 herdr-voice on\007'; msg=$(hv_str voiceOnText voiceOn); else printf '\033]0;herdr-voice off\007'; msg=$(hv_str voiceOffText voiceOff); fi
-printf '[%s] [INFO] %s (%s)\n' "$(date -u +%FT%TZ)" "$([ "$new" = true ] && echo ENABLE || echo DISABLE)" "$scope" >> "$LOG" 2>/dev/null || true
+jq -nc --arg ts "$(date -u +%FT%TZ)" --argjson enabled "$new" --arg source "$scope" \
+  '{ts:$ts,level:"INFO",event:"toggle",enabled:$enabled,source:$source}' >> "$LOG" 2>/dev/null || true
 # spoken confirmation only when the global master is on (respect master mute)
 TOKEN=$(jq -r '.token // ""' "$CFG"); HOST=$(jq -r '.host // "127.0.0.1"' "$CFG"); PORT=$(jq -r '.port // 8973' "$CFG")
 if [ "$(global_enabled)" = true ] && [ -n "$TOKEN" ]; then

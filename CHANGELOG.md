@@ -7,7 +7,7 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [2.0.0] — 2026-06-29
 
 Cross-platform release with pluggable speech and summarization. Current
-pre-release: `2.0.0-rc.5`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.md).
+pre-release: `2.0.0-rc.6`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.md).
 
 ### Added
 
@@ -44,6 +44,11 @@ pre-release: `2.0.0-rc.5`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.md
   Gemini key env var when set) into the service unit.
 - Daemons and hooks remain Node.js stdlib-only; the entire codebase is now
   dependency-injected and unit-tested with the Node stdlib test runner.
+- **Logs are now structured JSON lines (NDJSON)** — one object per line
+  (`{ts, level, event, …fields}`) instead of free-text. `speak`/`forward` events
+  carry `sessionId`/`pane` fields; the Bash CLI and plugin toggle emit the same
+  shape (`"event":"toggle"`). Parse with `jq`. Old plain-text lines age out via
+  rotation.
 
 ### Removed
 
@@ -66,4 +71,4 @@ Initial release.
   service; one-command install/uninstall.
 
 [1.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v1.0.0
-[2.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v2.0.0-rc.5
+[2.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v2.0.0-rc.6

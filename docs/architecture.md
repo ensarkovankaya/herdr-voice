@@ -135,6 +135,8 @@ the speaker (restart with `herdr-voice restart`).
 
 All processes write to `~/.herdr-voice/logs/herdr-voice.log` through
 `makeLogger()` (`src/lib/logger.mjs`): size-rotated (~1 MB × 5), append-only,
-and fully error-swallowing so logging can never crash a daemon. `SPEAK` /
-`FORWARD` lines carry a `[sess:… pane:…]` tag (`metaTag()`) so you can tell which
-Claude session is talking.
+and fully error-swallowing so logging can never crash a daemon. Each line is one
+JSON object (NDJSON): `{"ts","level","event",…fields}`. `speak` / `forward`
+events carry `sessionId` / `pane` fields so you can tell which Claude session is
+talking. The Bash CLI and plugin toggle write the same JSON shape
+(`"event":"toggle"`).

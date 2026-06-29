@@ -23,7 +23,7 @@ export function makeSpeaker({ getConfig, log, makeProvider, player } = {}) {
       const play = player || makePlayer({ audio: cfg.audio });
       if (!cache[name]) cache[name] = await (makeProvider ? makeProvider(name) : (FACTORIES[name] || FACTORIES.say)());
       try { await cache[name].speak(t, { cfg, log: say, player: play }); }
-      catch (e) { say('WARN', `tts ${name}: ${e.message}`); }
+      catch (e) { say('WARN', 'tts_error', { provider: name, error: e.message }); }
     });
     return chain;
   };

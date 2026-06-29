@@ -188,10 +188,10 @@ ______________________________________________________________________
 
 ## Logs & troubleshooting
 
-Everything goes to `~/.herdr-voice/logs/herdr-voice.log` (size-rotated, ~1 MB × 5). `SPEAK`/`FORWARD` lines are tagged with the Claude session + pane:
+Everything goes to `~/.herdr-voice/logs/herdr-voice.log` (size-rotated, ~1 MB × 5). Each line is one JSON object (NDJSON); `speak`/`forward` events carry the Claude session + pane:
 
-```
-[2026-06-29T11:54:19Z] [INFO] SPEAK [sess:a6aff93b pane:w653aa39818c041:p4] "Done." (local)
+```json
+{"ts":"2026-06-29T11:54:19Z","level":"INFO","event":"speak","text":"Done.","mode":"local","sessionId":"a6aff93b-243f-4a28","pane":"w653aa39818c041:p4"}
 ```
 
 Quick health check:
