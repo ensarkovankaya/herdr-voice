@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from './lib/config.mjs';
 import { postJson } from './lib/http.mjs';
+import { voiceEnabledForPane } from './lib/pane.mjs';
 
 export function cueFor(_input, cfg) {
   return cfg.cue;
@@ -17,7 +18,7 @@ function readStdin() {
 
 async function main() {
   const cfg = loadConfig();
-  if (!cfg.enabled) return;
+  if (!voiceEnabledForPane(cfg)) return;
   let input = {};
   try { input = JSON.parse(await readStdin()); } catch { /* still send the fixed cue */ }
   try {

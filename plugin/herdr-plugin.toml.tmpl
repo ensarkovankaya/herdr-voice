@@ -7,8 +7,13 @@ platforms = ["macos"]
 
 [[actions]]
 id = "toggle"
-title = "herd-voice: toggle voice"
+title = "herd-voice: toggle voice (global)"
 command = ["bash", "actions/toggle.sh"]
+
+[[actions]]
+id = "toggle-pane"
+title = "herd-voice: toggle voice (this pane)"
+command = ["bash", "actions/toggle.sh", "pane"]
 
 [[actions]]
 id = "enable"

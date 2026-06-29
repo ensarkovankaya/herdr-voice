@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { loadConfig } from './lib/config.mjs';
 import { summarize } from './lib/summarize.mjs';
 import { postJson } from './lib/http.mjs';
+import { voiceEnabledForPane } from './lib/pane.mjs';
 
 export function extractLastAssistantText(jsonl) {
   const lines = jsonl.split('\n');
@@ -37,7 +38,7 @@ function readStdin() {
 
 async function main() {
   const cfg = loadConfig();
-  if (!cfg.enabled) return;
+  if (!voiceEnabledForPane(cfg)) return;
   let input;
   try { input = JSON.parse(await readStdin()); } catch { return; }
   if (!input.transcript_path) return;
