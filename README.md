@@ -62,7 +62,7 @@ ______________________________________________________________________
 ## Requirements
 
 - **macOS** (Apple Silicon or Intel) with a working `say` voice — list them with `say -v '?'`.
-- **[herdr](https://herdr.dev) ≥ 0.7.0** (plugin API) — only needed for the plugin/keybind and remote routing.
+- **[herdr](https://herdr.dev) ≥ 0.7.0** — the host installer links the herd-voice plugin through it; keybinds, per-pane control, and presence-based remote routing all build on it.
 - `node`, `jq`, `curl`, and (for the remote scenario) `tailscale`.
 - A **Tailscale** mesh between your devices, if you want audio to follow you to a remote machine.
 
@@ -223,6 +223,8 @@ if [ "$hv" = "true" ]; then printf '  \033[2;32m🔈 voice\033[0m'
 else                        printf '  \033[2;90m🔇 voice\033[0m'; fi
 ```
 
+> This minimal snippet reflects the **global** switch only; for the per-pane state, use option A (the segment script is per-pane aware).
+>
 > The statusLine script belongs to Claude Code (outside this repo); it re-runs on every refresh, so no reload is needed.
 
 ______________________________________________________________________
@@ -282,7 +284,7 @@ herdr-voice uninstall        # asks to confirm
 herdr-voice uninstall --yes  # no prompt
 ```
 
-Removes: the launchd daemon + plist, the CLI (`~/.local/bin/herdr-voice`), and `~/.herdr-voice/` (config + token). **On a host it also** strips the herd-voice Claude hooks from `settings.json` (others preserved) and uninstalls the herdr plugin. **By hand:** the statusLine snippet and the herdr keybind (`prefix+shift+v`).
+Removes: the launchd daemon + plist, the CLI (`~/.local/bin/herdr-voice`), and `~/.herdr-voice/` (config + token). **On a host it also** strips the herd-voice Claude hooks from `settings.json` (others preserved) and uninstalls the herdr plugin. **By hand:** the statusLine snippet and the herdr keybinds (`prefix+shift+v`, `prefix+shift+p`).
 
 ______________________________________________________________________
 
