@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from './lib/config.mjs';
 import { summarize } from './lib/summarize.mjs';
@@ -27,6 +27,27 @@ export function extractLastAssistantText(jsonl) {
   return '';
 }
 
+// The Stop hook can fire before Claude has finished flushing the final
+// assistant message to the transcript, so a naive read returns the PREVIOUS
+// turn's text (off-by-one). Wait until the file size stops changing (the write
+// has settled) before reading. Deps are injectable for testing.
+export async function readSettledFile(path, {
+  read = (p) => readFileSync(p, 'utf8'),
+  size = (p) => { try { return statSync(p).size; } catch { return -1; } },
+  sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
+  gapMs = 150, minChecks = 3, stableNeeded = 2, maxChecks = 14,
+} = {}) {
+  let prev = -1; let stable = 0;
+  for (let i = 0; i < maxChecks; i++) {
+    const s = size(path);
+    if (s === prev) stable++; else stable = 0;
+    prev = s;
+    if (i + 1 >= minChecks && stable >= stableNeeded) break;
+    await sleep(gapMs);
+  }
+  try { return read(path); } catch { return null; }
+}
+
 function readStdin() {
   return new Promise((resolve) => {
     let buf = '';
@@ -42,8 +63,8 @@ async function main() {
   let input;
   try { input = JSON.parse(await readStdin()); } catch { return; }
   if (!input.transcript_path) return;
-  let jsonl;
-  try { jsonl = readFileSync(input.transcript_path, 'utf8'); } catch { return; }
+  const jsonl = await readSettledFile(input.transcript_path);
+  if (jsonl == null) return;
   const text = summarize(extractLastAssistantText(jsonl), { fallback: cfg.fallback });
   try {
     await postJson(`http://${cfg.host}:${cfg.port}/speak`, { text }, { token: cfg.token, timeoutMs: cfg.postTimeoutMs });
