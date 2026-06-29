@@ -2,7 +2,7 @@
 
 > Spoken summaries for **Claude Code** — heard on whatever device you're actually sitting at.
 
-herdr-voice says a short sentence out loud whenever Claude Code **finishes a task** or **needs your approval**. Working locally? It plays on your Mac. Connected from another machine with [`herdr --remote`](https://herdr.dev)? It follows you there. The talking is done by the built-in macOS `say` command — **no cloud, no API keys, no npm dependencies.**
+herdr-voice says a short sentence out loud whenever Claude Code **finishes a task** or **needs your approval**. Working locally? It plays on your Mac. Connected from another machine with [`herdr --remote`](https://herdr.dev)? It follows you there.
 
 It's the inverse of dictation tools like VoiceInk (which do **speech → text**); herdr-voice does **text → speech** for Claude's output only.
 
@@ -12,29 +12,29 @@ ______________________________________________________________________
 
 - 🔔 **Speaks on the moments that matter** — task done, or approval/input needed.
 - 📍 **Follows you across devices** — presence-aware routing over [Tailscale](https://tailscale.com); audio plays where you are.
-- 🗣️ **Any voice, any language** — uses any installed macOS voice; ships with `en` and `tr` string packs, fully overridable from config.
-- 🧹 **Speech-friendly summaries** — markdown, code blocks, and emoji are stripped, so you hear the message, not the syntax.
+- 🗣️ **Pluggable TTS** — `say` (macOS built-in), `piper` (local neural, macOS + Linux), or `gemini` (cloud). Any voice, any language.
+- 🧹 **Speech-friendly summaries** — markdown, code blocks, and emoji are stripped, so you hear the message, not the syntax. Summarizer is also pluggable: heuristic (default), LLM via HTTP, or any CLI command.
 - 🔌 **herdr plugin** — toggle voice on/off with a keybind, see status in your prompt.
 - 🪶 **Tiny footprint** — daemons are Node.js stdlib only (zero npm deps); CLI is Bash.
-- 🛠️ **Real service** — launchd startup, rotating logs, one-command install & uninstall.
+- 🛠️ **Real service** — launchd (macOS) / systemd (Linux) startup, rotating logs, one-command install & uninstall.
 
 ______________________________________________________________________
 
 ## How it works
 
 ```
-Claude Code (host Mac) finishes a task / needs approval
+Claude Code (host) finishes a task / needs approval
         │  Stop hook                      Notification hook
         ▼                                 (permission_prompt | idle_prompt)
   speak-summary.mjs                  notify-cue.mjs          (Node, Claude hooks)
         │  last assistant message → summarize → POST /speak {text}
         ▼
-  voice-router   (launchd daemon @ host, 0.0.0.0:8973)
+  voice-router   (service daemon @ host, 0.0.0.0:8973)
         │
         ├─ active remote registered & not expired?
-        │        └─ NO  → speak locally:  say -v <voice>
+        │        └─ NO  → speak locally via TTS provider
         │
-        └─ YES → forward over Tailscale → voice-sink @ remote → say -v <voice>
+        └─ YES → forward over Tailscale → voice-sink @ remote → TTS provider
                         └─ on failure → drop registration + speak locally (fallback)
 ```
 
@@ -42,29 +42,39 @@ Claude Code (host Mac) finishes a task / needs approval
 
 ### Components
 
-| File                                                   | Role                                                                                                                                                                                                      |
-| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/voice-router.mjs`                                 | **Host daemon.** Accepts `/speak`, routes to the active device; tracks the remote sink via `/register`·`/deregister`; falls back to local `say` if the remote is unreachable. Always-on via launchd.      |
-| `src/voice-sink.mjs`                                   | **Remote daemon.** `/speak {text}` → `say -v <voice>`. Installed as a launchd agent by `./install.sh remote`.                                                                                             |
-| `src/speak-summary.mjs`                                | **Claude Stop hook.** Waits for the transcript to settle (so it never speaks the previous turn), reads the last assistant message → `summarize` → POSTs to the router. Never throws (won't block Claude). |
-| `src/notify-cue.mjs`                                   | **Claude Notification hook.** Speaks a short fixed cue when approval/input is needed.                                                                                                                     |
-| `src/lib/summarize.mjs`                                | Strips markdown/code/emoji, reduces to the first sentence(s) (≤240 chars); falls back to a fixed phrase when empty.                                                                                       |
-| `src/lib/strings.mjs`                                  | Built-in spoken-string packs (`en`, `tr`), selected by `config.language`.                                                                                                                                 |
-| `src/lib/{config,http,speak,logger,presence,pane}.mjs` | config loader · tiny HTTP helpers · serial `say` queue · rotating logger · presence watcher · per-pane override resolver.                                                                                 |
-| `bin/herdr-voice`                                      | **CLI:** `start/stop/restart/status/logs/enable/disable/uninstall` — manages this machine's daemon.                                                                                                       |
-| `plugin/`                                              | **herdr plugin** (`ensar.herdr-voice`): toggle (global) / toggle-pane / enable / disable actions.                                                                                                          |
-| `launchd/dev.herdr-voice.plist.tmpl`                   | launchd template for both the router (host) and the sink (remote).                                                                                                                                        |
+| File                                             | Role                                                                                                                                                                                                       |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/voice-router.mjs`                           | **Host daemon.** Accepts `/speak`, routes to the active device; tracks the remote sink via `/register`·`/deregister`; falls back to local TTS if the remote is unreachable. Always-on via launchd/systemd. |
+| `src/voice-sink.mjs`                             | **Remote daemon.** `/speak {text}` → TTS provider → audio. Installed as a service agent by `./install.sh remote`.                                                                                          |
+| `src/speak-summary.mjs`                          | **Claude Stop hook.** Waits for the transcript to settle (so it never speaks the previous turn), reads the last assistant message → `summarize` → POSTs to the router. Never throws (won't block Claude).  |
+| `src/notify-cue.mjs`                             | **Claude Notification hook.** Speaks a short fixed cue when approval/input is needed.                                                                                                                      |
+| `src/lib/tts/`                                   | TTS provider layer: serial speaker queue, OS-aware audio player, and provider modules (`say`, `piper`, `gemini`).                                                                                          |
+| `src/lib/summarize/`                             | Summarizer layer: strips markdown/code/emoji, reduces to first sentence(s) (≤240 chars); supports heuristic, LLM HTTP, and subprocess (`command`) modes.                                                   |
+| `src/lib/strings.mjs`                            | Built-in spoken-string packs (`en`, `tr`), selected by `config.language`.                                                                                                                                  |
+| `src/lib/{config,http,logger,presence,pane}.mjs` | config loader · tiny HTTP helpers · rotating logger · presence watcher · per-pane override resolver.                                                                                                       |
+| `bin/herdr-voice`                                | **CLI:** `start/stop/restart/status/logs/enable/disable/uninstall` — manages this machine's daemon.                                                                                                        |
+| `plugin/`                                        | **herdr plugin** (`ensar.herdr-voice`): toggle (global) / toggle-pane / enable / disable actions.                                                                                                          |
+| `launchd/dev.herdr-voice.plist.tmpl`             | launchd template for both the router (host) and the sink (remote). macOS only.                                                                                                                             |
+| `service/dev.herdr-voice.service.tmpl`           | systemd unit template. Linux only.                                                                                                                                                                         |
 
-Daemons + Claude hooks are **Node.js** (stdlib only); the CLI + plugin actions are **Bash**.
+Daemons + Claude hooks are **Node.js** (stdlib only); the CLI + installer are **Bash**.
 
 ______________________________________________________________________
 
 ## Requirements
 
-- **macOS** (Apple Silicon or Intel) with a working `say` voice — list them with `say -v '?'`.
+- **macOS** (Apple Silicon or Intel) **or Linux** (x86-64 / ARM64).
 - **[herdr](https://herdr.dev) ≥ 0.7.0** — the host installer links the herdr-voice plugin through it; keybinds, per-pane control, and presence-based remote routing all build on it.
 - `node`, `jq`, `curl`, and (for the remote scenario) `tailscale`.
 - A **Tailscale** mesh between your devices, if you want audio to follow you to a remote machine.
+
+**Per-provider additional requirements:**
+
+| Provider                     | Extra requirement                                                                                                                                                                                           |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `say` *(default on macOS)*   | Built into macOS — no extra install. List voices with `say -v '?'`.                                                                                                                                         |
+| `piper` *(default on Linux)* | `python3 -m piper` on PATH (`pip install piper-tts`); a downloaded voice model (e.g. `en_US-lessac-medium`); an OS audio player: `afplay` (macOS), `aplay` / `paplay` (Linux ALSA/PulseAudio), or `ffplay`. |
+| `gemini` *(opt-in, any OS)*  | A Google AI API key exported as `GEMINI_API_KEY` in the daemon's environment.                                                                                                                               |
 
 ______________________________________________________________________
 
@@ -78,11 +88,11 @@ cd herdr-voice
 ./install.sh
 ```
 
-This will:
+The installer detects your OS and picks a default TTS provider (`say` on macOS, `piper` on Linux). It will:
 
 1. Create `~/.herdr-voice/config.json` and **generate a token**. Role: `host`.
 2. Add the Claude **Stop + Notification hooks** to `~/.claude/settings.json` (idempotent; existing hooks preserved).
-3. Load the launchd **voice-router** (`~/Library/LaunchAgents/dev.herdr-voice.plist`) and health-check it.
+3. Load the **voice-router** service (`launchd` on macOS, `systemd --user` on Linux) and health-check it.
 4. Link the herdr plugin (`herdr plugin link plugin/`).
 
 That's it — finish a task and you'll hear it. To toggle with keybinds, add these to `~/.config/herdr/config.toml`, then run `herdr server reload-config`:
@@ -140,8 +150,7 @@ ______________________________________________________________________
 | `host`                         | `127.0.0.1`   | The **router address** this machine talks to. `127.0.0.1` on the host; the host's Tailscale IP on a remote.          |
 | `port`                         | `8973`        | Router/sink port.                                                                                                    |
 | `language`                     | `en`          | Built-in spoken-string pack: `en` or `tr`. Drives the defaults for `cue`, `fallback`, `voiceOnText`, `voiceOffText`. |
-| `voice`                        | `Samantha`    | macOS `say -v` voice. List with `say -v '?'`.                                                                        |
-| `enabled`                      | `true`        | Global master switch — hooks speak only when `true` (the router/sink always run).                                    |
+| `enabled`                      | `false`       | Global master switch — hooks speak only when `true` (the router/sink always run).                                    |
 | `sessionDefault`               | `on`          | Under herdr, the default for a pane with no explicit override: `on` (talk) or `off` (opt-in per pane via keybind).   |
 | `role`                         | `host`        | `host` (runs the router) or `remote` (runs the sink + presence watcher).                                             |
 | `remoteHost`                   | `""`          | On a remote, scopes which `herdr --remote <host>` session counts as present (empty = any).                           |
@@ -154,28 +163,105 @@ ______________________________________________________________________
 
 Any spoken string can be overridden individually — set the field in `config.json` and it wins over the language pack.
 
+### TTS providers
+
+The `tts` block selects and configures the speech engine:
+
+```jsonc
+// ~/.herdr-voice/config.json
+{
+  "tts": {
+    "provider": "say",                    // say | piper | gemini
+    "say": {
+      "voice": "Samantha"                 // any installed macOS voice
+    },
+    "piper": {
+      "cmd": "python3 -m piper",          // piper executable / module
+      "voice": "en_US-lessac-medium",     // voice model name (must be downloaded)
+      "dataDir": "~/.herdr-voice/voices"  // directory holding voice .onnx files
+    },
+    "gemini": {
+      "model": "gemini-2.5-flash-preview-tts",
+      "voice": "Kore",
+      "apiKeyEnv": "GEMINI_API_KEY",      // env var name holding your API key
+      "languageCode": ""                  // e.g. "en-US"; leave empty for auto-detect
+    }
+  },
+  "audio": {
+    "player": "auto"                      // auto | afplay | aplay | paplay | ffplay
+  }
+}
+```
+
+| Provider | When it plays audio                                                                 |
+| -------- | ----------------------------------------------------------------------------------- |
+| `say`    | Self-playing — the `say` process handles output directly (macOS only).              |
+| `piper`  | Synthesizes a WAV file, then `audio.player` plays it.                               |
+| `gemini` | Fetches PCM from the Gemini TTS API, wraps it as WAV, then `audio.player` plays it. |
+
+`audio.player: "auto"` tries `afplay` (macOS), then `aplay`, `paplay`, `ffplay` in order. Set it explicitly if auto-detection picks the wrong tool.
+
+**Back-compat:** a v1 config with a top-level `"voice"` key is automatically migrated in-memory to `tts.say.voice`; no manual rewrite needed.
+
+### Summarizer
+
+The `summarize` block controls how the last Claude message is condensed before speaking:
+
+```jsonc
+{
+  "summarize": {
+    "mode": "heuristic",   // heuristic | llm | command
+    "maxLen": 240
+  }
+}
+```
+
+| Mode        | Description                                                                                                                                                                                                               |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `heuristic` | *(default)* Strips markdown, code blocks, and emoji; keeps the first sentence(s) up to `maxLen` characters. No external calls.                                                                                            |
+| `llm`       | Sends the text to an HTTP LLM endpoint. Configure via `summarize.llm` (URL, headers with `${ENV}` interpolation, `promptTemplate`, `bodyTemplate`, `responsePath`). Works with Gemini, OpenAI-compatible APIs, or Ollama. |
+| `command`   | Runs a subprocess and reads its stdout as the summary. Example using Claude Code's own session (no API key needed):                                                                                                       |
+
+```jsonc
+{
+  "summarize": {
+    "mode": "command",
+    "command": {
+      "cmd": "claude",
+      "args": ["-p", "Summarize in one spoken sentence (no markdown, no emoji): ${text}"],
+      "timeoutMs": 8000
+    }
+  }
+}
+```
+
+Every mode's output passes a final sanitization and `maxLen` cap. On any error or timeout, the summarizer falls back to `heuristic`; an empty result falls back to the fixed `fallback` string. Speech never breaks.
+
 ### Example: Turkish output
 
 ```json
 {
   "language": "tr",
-  "voice": "Yelda"
+  "tts": {
+    "provider": "say",
+    "say": { "voice": "Yelda" }
+  }
 }
 ```
 
-`language: "tr"` switches every spoken default to Turkish (`cue` → "Onayın gerekiyor.", `fallback` → "Tamamlandı.", etc.); `voice: "Yelda"` picks the matching macOS voice. Restart the daemon after changing `voice` (`herdr-voice restart`).
+`language: "tr"` switches every spoken default to Turkish (`cue` → "Onayın gerekiyor.", `fallback` → "Tamamlandı.", etc.); `tts.say.voice: "Yelda"` picks the matching macOS voice. Restart the daemon after changing TTS config (`herdr-voice restart`).
 
 ______________________________________________________________________
 
 ## CLI: `herdr-voice`
 
-Manages this machine's launchd daemon (router on a host, sink + watcher on a remote):
+Manages this machine's service daemon (router on a host, sink + watcher on a remote):
 
 ```sh
-herdr-voice start       # start the daemon (launchd)
+herdr-voice start       # start the daemon (launchd/systemd)
 herdr-voice stop        # stop it
 herdr-voice restart     # restart it
-herdr-voice status      # running? + role + enabled + voice + recent logs
+herdr-voice status      # running? + role + enabled + provider + recent logs
 herdr-voice logs        # tail -f ~/.herdr-voice/logs/herdr-voice.log
 herdr-voice enable      # turn voice on  (config.enabled=true)  + spoken confirmation
 herdr-voice disable     # turn voice off (config.enabled=false) + spoken confirmation
@@ -184,7 +270,7 @@ herdr-voice uninstall   # remove everything (see below)
 
 ```text
 $ herdr-voice status
-herdr-voice: running | role=host | enabled=true | voice=Samantha
+herdr-voice: running | role=host | enabled=true | provider=say
 ```
 
 ______________________________________________________________________
@@ -193,8 +279,8 @@ ______________________________________________________________________
 
 herdr-voice exposes herdr **plugin actions**; bind the ones you want in `~/.config/herdr/config.toml` (snippet in [Host setup](#host-where-claude-code-runs)), then run `herdr server reload-config`. `prefix` is herdr's own leader key (whatever you've set it to in herdr).
 
-| Shortcut         | herdr action                           | What it does                                                                      |
-| ---------------- | -------------------------------------- | --------------------------------------------------------------------------------- |
+| Shortcut         | herdr action                            | What it does                                                                      |
+| ---------------- | --------------------------------------- | --------------------------------------------------------------------------------- |
 | `prefix+shift+v` | `ensar.herdr-voice.toggle`              | **Global master** on/off — silences or re-enables voice for the whole machine.    |
 | `prefix+shift+p` | `ensar.herdr-voice.toggle-pane`         | **This pane only** — toggles voice for the focused Claude pane (opt-in override). |
 | *(unbound)*      | `ensar.herdr-voice.enable` / `.disable` | Force the global master on / off (same as `herdr-voice enable` / `disable`).      |
@@ -231,7 +317,7 @@ ______________________________________________________________________
 
 ## Logs
 
-Everything goes to `~/.herdr-voice/logs/herdr-voice.log` (size-rotated, ~1 MB × 5), plus launchd's own `launchd.out.log` / `launchd.err.log`.
+Everything goes to `~/.herdr-voice/logs/herdr-voice.log` (size-rotated, ~1 MB × 5), plus the service manager's own stdout/stderr logs.
 
 `SPEAK` / `FORWARD` lines are tagged with the originating Claude session (short id) and herdr pane when known — so you can tell which session is talking:
 
@@ -241,7 +327,7 @@ Everything goes to `~/.herdr-voice/logs/herdr-voice.log` (size-rotated, ~1 MB ×
 
 ```sh
 herdr-voice logs                              # tail -f the app log
-tail -f ~/.herdr-voice/logs/launchd.*.log     # raw launchd stdout/stderr
+tail -f ~/.herdr-voice/logs/launchd.*.log     # raw launchd stdout/stderr (macOS)
 grep 'sess:a6aff93b' ~/.herdr-voice/logs/herdr-voice.log   # one session's lines
 ```
 
@@ -258,7 +344,7 @@ herdr-voice status
 jq .enabled ~/.herdr-voice/config.json
 
 # Restart after a config/token change
-herdr-voice restart                           # (host: also works via launchctl kickstart)
+herdr-voice restart
 
 # Send a manual test phrase
 TOKEN=$(jq -r .token ~/.herdr-voice/config.json)
@@ -273,7 +359,11 @@ tail -f ~/.herdr-voice/logs/herdr-voice.log | grep -i register
 herdr plugin log list --plugin ensar.herdr-voice
 ```
 
-**No sound?** Walk the checklist: `enabled=true` → router `/health` ok → `say -v <voice> hello` works → volume/output device → (remote) the `herdr --remote` session shows a `register` line in the host log.
+**No sound?** Walk the checklist: `enabled=true` → router `/health` ok → TTS provider installed/configured → OS audio player works → volume/output device → (remote) the `herdr --remote` session shows a `register` line in the host log.
+
+**piper:** confirm `python3 -m piper --help` runs, the voice `.onnx` file is in `tts.piper.dataDir`, and an audio player (`aplay`/`paplay`/`ffplay`) is on PATH.
+
+**gemini:** confirm `echo $GEMINI_API_KEY` is non-empty in the daemon's environment (set it in the plist/unit or export it before `herdr-voice start`).
 
 ______________________________________________________________________
 
@@ -284,7 +374,7 @@ herdr-voice uninstall        # asks to confirm
 herdr-voice uninstall --yes  # no prompt
 ```
 
-Removes: the launchd daemon + plist, the CLI (`~/.local/bin/herdr-voice`), and `~/.herdr-voice/` (config + token). **On a host it also** strips the herdr-voice Claude hooks from `settings.json` (others preserved) and uninstalls the herdr plugin. **By hand:** the statusLine snippet and the herdr keybinds (`prefix+shift+v`, `prefix+shift+p`).
+Removes: the service daemon + unit file, the CLI (`~/.local/bin/herdr-voice`), and `~/.herdr-voice/` (config + token). **On a host it also** strips the herdr-voice Claude hooks from `settings.json` (others preserved) and uninstalls the herdr plugin. **By hand:** the statusLine snippet and the herdr keybinds (`prefix+shift+v`, `prefix+shift+p`).
 
 ______________________________________________________________________
 
@@ -296,8 +386,10 @@ node --test    # run the test suite (Node stdlib test runner, zero deps)
 
 ## Roadmap
 
-- A pluggable TTS backend behind `lib/speak.mjs` (e.g. [Piper](https://github.com/OHF-Voice/piper1-gpl) or other local neural voices) for higher-quality, cross-platform output.
-- Thin clients (phone/tablet over SSH) aren't supported yet — there's no local process to play audio on them.
+- **Windows** — TTS provider (PowerShell `System.Speech`), service (Task Scheduler / NSSM), and presence detection.
+- **Persistent Piper HTTP server** — `python -m piper.http_server` mode for lower-latency local synthesis.
+- **Audio streaming** — Piper `--output-raw` / Gemini SSE instead of whole-utterance WAV for faster first sound.
+- **Thin clients** (phone/tablet over SSH) — no local process to play audio yet.
 
 ## License
 
