@@ -66,8 +66,9 @@ async function main() {
   const jsonl = await readSettledFile(input.transcript_path);
   if (jsonl == null) return;
   const text = summarize(extractLastAssistantText(jsonl), { fallback: cfg.fallback });
+  const sessionId = input.session_id || (input.transcript_path || '').split('/').pop().replace(/\.jsonl$/, '');
   try {
-    await postJson(`http://${cfg.host}:${cfg.port}/speak`, { text }, { token: cfg.token, timeoutMs: cfg.postTimeoutMs });
+    await postJson(`http://${cfg.host}:${cfg.port}/speak`, { text, sessionId, pane: process.env.HERDR_PANE_ID || '' }, { token: cfg.token, timeoutMs: cfg.postTimeoutMs });
   } catch { /* swallow */ }
 }
 

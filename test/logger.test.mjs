@@ -3,7 +3,15 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { makeLogger } from '../src/lib/logger.mjs';
+import { makeLogger, metaTag } from '../src/lib/logger.mjs';
+
+test('metaTag formats session/pane and skips empties', () => {
+  assert.equal(metaTag({ sessionId: 'a6aff93b-243f-4a28', pane: 'w1:p4' }), ' [sess:a6aff93b pane:w1:p4]');
+  assert.equal(metaTag({ sessionId: 'abcd1234' }), ' [sess:abcd1234]');
+  assert.equal(metaTag({ pane: 'w1:p4' }), ' [pane:w1:p4]');
+  assert.equal(metaTag({}), '');
+  assert.equal(metaTag(), '');
+});
 
 test('writes a line in the expected format', () => {
   const f = join(mkdtempSync(join(tmpdir(), 'hvlog-')), 'a.log');

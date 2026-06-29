@@ -1,6 +1,15 @@
 import { appendFileSync, statSync, renameSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
+// Build a " [sess:abcd1234 pane:w…:p4]" tag for log lines from optional
+// identifiers. Empty fields are skipped; returns '' when nothing is known.
+export function metaTag(meta = {}) {
+  const parts = [];
+  if (meta && meta.sessionId) parts.push(`sess:${String(meta.sessionId).slice(0, 8)}`);
+  if (meta && meta.pane) parts.push(`pane:${meta.pane}`);
+  return parts.length ? ` [${parts.join(' ')}]` : '';
+}
+
 export function makeLogger({ file, maxBytes = 1_000_000, keep = 5 }) {
   function rotate() {
     try {

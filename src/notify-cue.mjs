@@ -21,8 +21,9 @@ async function main() {
   if (!voiceEnabledForPane(cfg)) return;
   let input = {};
   try { input = JSON.parse(await readStdin()); } catch { /* still send the fixed cue */ }
+  const sessionId = (input && input.session_id) || '';
   try {
-    await postJson(`http://${cfg.host}:${cfg.port}/speak`, { text: cueFor(input, cfg) }, { token: cfg.token, timeoutMs: cfg.postTimeoutMs });
+    await postJson(`http://${cfg.host}:${cfg.port}/speak`, { text: cueFor(input, cfg), sessionId, pane: process.env.HERDR_PANE_ID || '' }, { token: cfg.token, timeoutMs: cfg.postTimeoutMs });
   } catch { /* swallow */ }
 }
 

@@ -39,3 +39,12 @@ test('wrong token → 401', async () => {
   assert.equal(r.status, 401);
   s.close();
 });
+
+test('SPEAK log carries session/pane tag', async () => {
+  const logs = [];
+  const getConfig = () => ({ token: 'T', voice: 'Samantha', enabled: true });
+  const { s, port } = await start(makeSinkHandler({ getConfig, speak: () => {}, log: (lvl, msg) => logs.push(msg) }));
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'hi', sessionId: 'abcd1234ef', pane: 'w1:p4' }, { token: 'T' });
+  assert.ok(logs.some((m) => /SPEAK \[sess:abcd1234 pane:w1:p4\]/.test(m)), logs.join(' | '));
+  s.close();
+});

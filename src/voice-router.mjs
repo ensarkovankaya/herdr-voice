@@ -5,20 +5,21 @@ import { fileURLToPath } from 'node:url';
 import { loadConfig } from './lib/config.mjs';
 import { readJsonBody, sendJson, postJson } from './lib/http.mjs';
 import { speak as realSpeak } from './lib/speak.mjs';
-import { makeLogger } from './lib/logger.mjs';
+import { makeLogger, metaTag } from './lib/logger.mjs';
 
 export function makeRouter({ getConfig, speak, forward, now = Date.now, log }) {
   let remote = null; // {ip, port, expiresAt}
 
-  function route(text, cfg) {
+  function route(text, cfg, meta) {
+    const tag = metaTag(meta);
     if (remote && now() < remote.expiresAt) {
       const { ip, port } = remote;
-      log('INFO', `FORWARD "${(text || '').slice(0, 120)}" -> ${ip}:${port}`);
+      log('INFO', `FORWARD${tag} "${(text || '').slice(0, 120)}" -> ${ip}:${port}`);
       Promise.resolve()
-        .then(() => forward(ip, port, text))
-        .catch(() => { remote = null; log('WARN', `FALLBACK local (forward ${ip}:${port} failed)`); speak(text, { voice: cfg.voice }); });
+        .then(() => forward(ip, port, text, meta))
+        .catch(() => { remote = null; log('WARN', `FALLBACK local${tag} (forward ${ip}:${port} failed)`); speak(text, { voice: cfg.voice }); });
     } else {
-      log('INFO', `SPEAK "${(text || '').slice(0, 120)}" (local)`);
+      log('INFO', `SPEAK${tag} "${(text || '').slice(0, 120)}" (local)`);
       speak(text, { voice: cfg.voice });
     }
   }
@@ -38,7 +39,7 @@ export function makeRouter({ getConfig, speak, forward, now = Date.now, log }) {
       return sendJson(res, 200, { ok: true, remote: { ip: remote.ip, port: remote.port } });
     }
     if (req.url === '/deregister') { remote = null; log('INFO', 'DEREGISTER'); return sendJson(res, 200, { ok: true }); }
-    if (req.url === '/speak') { sendJson(res, 202, { ok: true }); route(body.text, cfg); return; }
+    if (req.url === '/speak') { sendJson(res, 202, { ok: true }); route(body.text, cfg, { sessionId: body.sessionId, pane: body.pane }); return; }
     return sendJson(res, 404, { error: 'not found' });
   };
 }
@@ -48,9 +49,9 @@ function main() {
   const log = makeLogger({ file: logFile });
   const bind = process.env.HERD_VOICE_BIND || '0.0.0.0';
   const cfg0 = loadConfig();
-  const forward = (ip, port, text) => {
+  const forward = (ip, port, text, meta = {}) => {
     const c = loadConfig();
-    return postJson(`http://${ip}:${port}/speak`, { text }, { token: c.token, timeoutMs: c.forwardTimeoutMs })
+    return postJson(`http://${ip}:${port}/speak`, { text, sessionId: meta.sessionId, pane: meta.pane }, { token: c.token, timeoutMs: c.forwardTimeoutMs })
       .then((r) => { if (r.status >= 300) throw new Error(`sink ${r.status}`); });
   };
   const handler = makeRouter({ getConfig: loadConfig, speak: realSpeak, forward, now: Date.now, log });
