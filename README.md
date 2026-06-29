@@ -231,9 +231,16 @@ ______________________________________________________________________
 
 Everything goes to `~/.herdr-voice/logs/herdr-voice.log` (size-rotated, ~1 MB × 5), plus launchd's own `launchd.out.log` / `launchd.err.log`.
 
+`SPEAK` / `FORWARD` lines are tagged with the originating Claude session (short id) and herdr pane when known — so you can tell which session is talking:
+
+```
+[2026-06-29T11:54:19Z] [INFO] SPEAK [sess:a6aff93b pane:w653aa39818c041:p4] "Done." (local)
+```
+
 ```sh
-herdr-voice logs                          # tail -f the app log
-tail -f ~/.herdr-voice/logs/launchd.*.log # raw launchd stdout/stderr
+herdr-voice logs                              # tail -f the app log
+tail -f ~/.herdr-voice/logs/launchd.*.log     # raw launchd stdout/stderr
+grep 'sess:a6aff93b' ~/.herdr-voice/logs/herdr-voice.log   # one session's lines
 ```
 
 ______________________________________________________________________
