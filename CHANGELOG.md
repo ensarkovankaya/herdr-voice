@@ -7,7 +7,7 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [2.0.0] — 2026-06-29
 
 Cross-platform release with pluggable speech and summarization. Current
-pre-release: `2.0.0-rc.2`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.md).
+pre-release: `2.0.0-rc.3`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.md).
 
 ### Added
 
@@ -26,6 +26,9 @@ pre-release: `2.0.0-rc.2`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.md
   safe fallback chain. See [docs/summarizer.md](docs/summarizer.md).
 - **Documentation set** under `docs/` (architecture, configuration, providers,
   summarizer, remote setup, troubleshooting, migration) plus `CONTRIBUTING.md`.
+- **JSON locale packs** (`src/lib/locales/`) as the single source of truth for
+  spoken strings, read by both the Node daemons and the Bash CLI/plugin (via
+  `jq`). Add a language by dropping a `<lang>.json` file — no code change.
 - WAV header wrapping (`pcmToWav`) for providers that return raw PCM (Gemini).
 
 ### Changed
@@ -60,4 +63,4 @@ Initial release.
   service; one-command install/uninstall.
 
 [1.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v1.0.0
-[2.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v2.0.0-rc.2
+[2.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v2.0.0-rc.3
