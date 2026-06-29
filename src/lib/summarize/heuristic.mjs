@@ -20,7 +20,7 @@ export function shorten(text, maxLen = 240) {
   let out = '';
   for (const p of parts) {
     if (!out) out = p;
-    else if ((out + ' ' + p).length < maxLen) out += ' ' + p;
+    else if ((out + ' ' + p).length <= maxLen) out += ' ' + p;
     else break;
   }
   if (out.length > maxLen) out = out.slice(0, maxLen - 1).trimEnd() + '…';
