@@ -103,7 +103,7 @@ command = "ensar.herd-voice.toggle-pane"
 description = "herd-voice: toggle voice (this pane)"
 ```
 
-**Per-pane vs global:** `toggle-pane` flips voice for just the focused Claude pane (stored in `~/.herdr-voice/panes/`, keyed by `HERDR_PANE_ID`); a pane override beats the global flag, and panes without one inherit it. So you can silence one noisy session while the rest keep talking. `herdr-voice enable/disable` (and the `toggle` action) stay machine-wide.
+**Per-pane vs global:** `prefix+shift+v` is the global master switch (off ⇒ everything silent). `toggle-pane` flips voice for just the focused Claude pane (stored in `~/.herdr-voice/panes/`, keyed by `HERDR_PANE_ID`). With the master on, a pane's effective state is: explicit override (on/off) if set, otherwise `sessionDefault` (`on` = talk, `off` = opt-in). So set `sessionDefault: "off"` to start every session silent and un-mute just the ones you want with `prefix+shift+p`; leave it `on` to talk everywhere and silence the noisy ones. Outside herdr (no `HERDR_PANE_ID`) voice simply follows the master.
 
 ### Remote (a second machine — optional)
 
@@ -141,7 +141,8 @@ ______________________________________________________________________
 | `port`                         | `8973`        | Router/sink port.                                                                                                    |
 | `language`                     | `en`          | Built-in spoken-string pack: `en` or `tr`. Drives the defaults for `cue`, `fallback`, `voiceOnText`, `voiceOffText`. |
 | `voice`                        | `Samantha`    | macOS `say -v` voice. List with `say -v '?'`.                                                                        |
-| `enabled`                      | `true`        | Hooks speak only when `true` (the router/sink always run).                                                           |
+| `enabled`                      | `true`        | Global master switch — hooks speak only when `true` (the router/sink always run).                                    |
+| `sessionDefault`               | `on`          | Under herdr, the default for a pane with no explicit override: `on` (talk) or `off` (opt-in per pane via keybind).   |
 | `role`                         | `host`        | `host` (runs the router) or `remote` (runs the sink + presence watcher).                                             |
 | `remoteHost`                   | `""`          | On a remote, scopes which `herdr --remote <host>` session counts as present (empty = any).                           |
 | `remoteTtlMs`                  | `3600000`     | Safety expiry for a remote registration.                                                                             |

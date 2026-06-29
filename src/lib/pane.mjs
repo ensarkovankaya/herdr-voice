@@ -22,11 +22,16 @@ export function readPaneOverride(paneId, dir = panesDir()) {
   } catch { return null; }
 }
 
-// Effective voice state for the current pane: a per-pane override wins,
-// otherwise inherit the global config.enabled.
+// Effective voice state for the current pane.
+//   1. config.enabled is the global master switch — off ⇒ silence everything.
+//   2. an explicit per-pane override (on/off) wins next.
+//   3. with no override: outside herdr (no pane id) follow the master; inside
+//      herdr fall back to config.sessionDefault ('on' = talk, 'off' = opt-in).
 export function voiceEnabledForPane(cfg, { paneId = process.env.HERDR_PANE_ID, dir } = {}) {
+  if (!(cfg && cfg.enabled)) return false;
   const ov = readPaneOverride(paneId, dir || panesDir());
   if (ov === 'on') return true;
   if (ov === 'off') return false;
-  return !!(cfg && cfg.enabled);
+  if (!paneId) return true;
+  return (cfg.sessionDefault || 'on') === 'on';
 }

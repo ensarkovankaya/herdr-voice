@@ -10,6 +10,7 @@ const DEFAULTS = {
   language: 'en',
   voice: 'Samantha',
   enabled: false,
+  sessionDefault: 'on',
   role: 'host',
   remoteHost: '',
   remoteTtlMs: 3_600_000,

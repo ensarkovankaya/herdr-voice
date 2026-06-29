@@ -3,7 +3,7 @@ set -euo pipefail
 CFG="${HERD_VOICE_CONFIG:-$HOME/.herdr-voice/config.json}"
 LOG="$HOME/.herdr-voice/logs/herdr-voice.log"
 PANES="$HOME/.herdr-voice/panes"
-mode="${1:-toggle}"   # toggle|on|off = global ; pane = focused-pane toggle
+mode="${1:-toggle}"   # toggle|on|off = global master ; pane = focused-pane opt-in
 [ -f "$CFG" ] || { echo "no config: $CFG" >&2; exit 1; }
 
 # Resolve a spoken string: explicit config field wins, else the language pack.
@@ -13,6 +13,7 @@ hv_str(){
   else case "$(jq -r '.language // "en"' "$CFG")" in tr) printf '%s' "$3" ;; *) printf '%s' "$2" ;; esac; fi
 }
 global_enabled(){ jq -r '.enabled // false' "$CFG"; }
+session_default(){ jq -r '.sessionDefault // "on"' "$CFG"; }
 set_global(){ local tmp; tmp=$(mktemp); jq --argjson e "$1" '.enabled=$e' "$CFG" > "$tmp" && mv "$tmp" "$CFG"; }
 # id of the focused herdr Claude pane (empty if none / herdr unavailable)
 focused_pane(){
@@ -27,8 +28,9 @@ if [ "$mode" = "pane" ]; then
     pf="$PANES/$(printf '%s' "$pane" | tr -c 'A-Za-z0-9' '_')"
     mkdir -p "$PANES"
     ov=""; [ -f "$pf" ] && ov="$(cat "$pf")"
-    if [ "$ov" = on ]; then eff=true; elif [ "$ov" = off ]; then eff=false; else eff="$(global_enabled)"; fi
-    if [ "$eff" = true ]; then printf 'off' > "$pf"; new=false; else printf 'on' > "$pf"; new=true; fi
+    if [ "$ov" = on ]; then cur=true; elif [ "$ov" = off ]; then cur=false
+    elif [ "$(session_default)" = on ]; then cur=true; else cur=false; fi
+    if [ "$cur" = true ]; then printf 'off' > "$pf"; new=false; else printf 'on' > "$pf"; new=true; fi
     scope="pane $pane"
   else
     cur="$(global_enabled)"; new=$([ "$cur" = true ] && echo false || echo true); set_global "$new"
@@ -46,8 +48,9 @@ fi
 
 if [ "$new" = true ]; then printf '\033]0;🔈 herd-voice on\007'; msg=$(hv_str voiceOnText 'Voice on.' 'Ses açıldı.'); else printf '\033]0;herd-voice off\007'; msg=$(hv_str voiceOffText 'Voice off.' 'Ses kapandı.'); fi
 printf '[%s] [INFO] %s (%s)\n' "$(date -u +%FT%TZ)" "$([ "$new" = true ] && echo ENABLE || echo DISABLE)" "$scope" >> "$LOG" 2>/dev/null || true
+# spoken confirmation only when the global master is on (respect master mute)
 TOKEN=$(jq -r '.token // ""' "$CFG"); HOST=$(jq -r '.host // "127.0.0.1"' "$CFG"); PORT=$(jq -r '.port // 8973' "$CFG")
-if [ -n "$TOKEN" ]; then
+if [ "$(global_enabled)" = true ] && [ -n "$TOKEN" ]; then
   curl -fsS -m 2 -X POST "http://${HOST}:${PORT}/speak" \
     -H "x-voice-token: $TOKEN" -H 'content-type: application/json' \
     -d "{\"text\":\"$msg\"}" >/dev/null 2>&1 || true
