@@ -26,3 +26,14 @@ test('code block is dropped, surrounding text kept', () => {
   const out = summarize('Operation complete.\n```\nrm -rf /\n```\nContinuing.');
   assert.equal(out, 'Operation complete. Continuing.');
 });
+
+test('emojis are stripped from spoken text', () => {
+  assert.equal(summarize('Done ✅ shipped 🚀'), 'Done shipped');
+  assert.equal(summarize('🎉 Tests passed 🔥🔥'), 'Tests passed');
+  assert.equal(summarize('Flags 🇹🇷🇬🇧 done'), 'Flags done');
+  assert.equal(summarize('Family 👨‍👩‍👧 ok'), 'Family ok');
+});
+
+test('emoji-only message → fallback', () => {
+  assert.equal(summarize('🎉🚀🔥'), 'Done.');
+});

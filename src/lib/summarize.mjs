@@ -7,6 +7,9 @@ export function summarize(text, { maxLen = 240, fallback = 'Done.' } = {}) {
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')       // links -> text
     .replace(/^\s{0,3}(#{1,6}|>|[-*+]|\d+\.)\s+/gm, '') // heading/list/quote
     .replace(/[*_~`]{1,3}/g, '')                   // emphasis markers
+    .replace(/[\u{1F1E6}-\u{1F1FF}]/gu, ' ')       // regional indicators (flags)
+    .replace(/\p{Extended_Pictographic}/gu, ' ')   // emoji pictographs
+    .replace(/[\u{FE00}-\u{FE0F}\u{200D}\u{20E3}]/gu, '') // variation selectors, ZWJ, keycap
     .replace(/\s+/g, ' ')
     .trim();
   if (!t) return fallback;
