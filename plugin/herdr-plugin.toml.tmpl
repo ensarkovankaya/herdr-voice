@@ -1,5 +1,5 @@
-id = "ensar.herd-voice"
-name = "herd-voice"
+id = "ensar.herdr-voice"
+name = "herdr-voice"
 version = "1.0.0"
 min_herdr_version = "0.7.0"
 description = "Speak Claude Code summaries on your active device (macOS say)."
@@ -7,20 +7,20 @@ platforms = ["macos"]
 
 [[actions]]
 id = "toggle"
-title = "herd-voice: toggle voice (global)"
+title = "herdr-voice: toggle voice (global)"
 command = ["bash", "actions/toggle.sh"]
 
 [[actions]]
 id = "toggle-pane"
-title = "herd-voice: toggle voice (this pane)"
+title = "herdr-voice: toggle voice (this pane)"
 command = ["bash", "actions/toggle.sh", "pane"]
 
 [[actions]]
 id = "enable"
-title = "herd-voice: voice on"
+title = "herdr-voice: voice on"
 command = ["bash", "actions/toggle.sh", "on"]
 
 [[actions]]
 id = "disable"
-title = "herd-voice: voice off"
+title = "herdr-voice: voice off"
 command = ["bash", "actions/toggle.sh", "off"]

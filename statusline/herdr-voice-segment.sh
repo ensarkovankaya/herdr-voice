@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# herd-voice statusLine segment — effective voice state for THIS pane:
+# herdr-voice statusLine segment — effective voice state for THIS pane:
 # master(enabled) AND ( per-pane override on/off, else sessionDefault under herdr ).
 # Output: "🔈 voice" / "🔇 voice".
 CFG="${HERD_VOICE_CONFIG:-$HOME/.herdr-voice/config.json}"

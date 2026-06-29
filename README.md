@@ -1,10 +1,10 @@
-# 🔊 herd-voice
+# 🔊 herdr-voice
 
 > Spoken summaries for **Claude Code** — heard on whatever device you're actually sitting at.
 
-herd-voice says a short sentence out loud whenever Claude Code **finishes a task** or **needs your approval**. Working locally? It plays on your Mac. Connected from another machine with [`herdr --remote`](https://herdr.dev)? It follows you there. The talking is done by the built-in macOS `say` command — **no cloud, no API keys, no npm dependencies.**
+herdr-voice says a short sentence out loud whenever Claude Code **finishes a task** or **needs your approval**. Working locally? It plays on your Mac. Connected from another machine with [`herdr --remote`](https://herdr.dev)? It follows you there. The talking is done by the built-in macOS `say` command — **no cloud, no API keys, no npm dependencies.**
 
-It's the inverse of dictation tools like VoiceInk (which do **speech → text**); herd-voice does **text → speech** for Claude's output only.
+It's the inverse of dictation tools like VoiceInk (which do **speech → text**); herdr-voice does **text → speech** for Claude's output only.
 
 ______________________________________________________________________
 
@@ -52,7 +52,7 @@ Claude Code (host Mac) finishes a task / needs approval
 | `src/lib/strings.mjs`                                  | Built-in spoken-string packs (`en`, `tr`), selected by `config.language`.                                                                                                                                 |
 | `src/lib/{config,http,speak,logger,presence,pane}.mjs` | config loader · tiny HTTP helpers · serial `say` queue · rotating logger · presence watcher · per-pane override resolver.                                                                                 |
 | `bin/herdr-voice`                                      | **CLI:** `start/stop/restart/status/logs/enable/disable/uninstall` — manages this machine's daemon.                                                                                                       |
-| `plugin/`                                              | **herdr plugin** (`ensar.herd-voice`): toggle (global) / toggle-pane / enable / disable actions.                                                                                                          |
+| `plugin/`                                              | **herdr plugin** (`ensar.herdr-voice`): toggle (global) / toggle-pane / enable / disable actions.                                                                                                          |
 | `launchd/dev.herdr-voice.plist.tmpl`                   | launchd template for both the router (host) and the sink (remote).                                                                                                                                        |
 
 Daemons + Claude hooks are **Node.js** (stdlib only); the CLI + plugin actions are **Bash**.
@@ -62,7 +62,7 @@ ______________________________________________________________________
 ## Requirements
 
 - **macOS** (Apple Silicon or Intel) with a working `say` voice — list them with `say -v '?'`.
-- **[herdr](https://herdr.dev) ≥ 0.7.0** — the host installer links the herd-voice plugin through it; keybinds, per-pane control, and presence-based remote routing all build on it.
+- **[herdr](https://herdr.dev) ≥ 0.7.0** — the host installer links the herdr-voice plugin through it; keybinds, per-pane control, and presence-based remote routing all build on it.
 - `node`, `jq`, `curl`, and (for the remote scenario) `tailscale`.
 - A **Tailscale** mesh between your devices, if you want audio to follow you to a remote machine.
 
@@ -92,15 +92,15 @@ That's it — finish a task and you'll hear it. To toggle with keybinds, add the
 [[keys.command]]
 key = "prefix+shift+v"
 type = "plugin_action"
-command = "ensar.herd-voice.toggle"
-description = "herd-voice: toggle voice (global)"
+command = "ensar.herdr-voice.toggle"
+description = "herdr-voice: toggle voice (global)"
 
 # this pane only (overrides global for the focused Claude pane)
 [[keys.command]]
 key = "prefix+shift+p"
 type = "plugin_action"
-command = "ensar.herd-voice.toggle-pane"
-description = "herd-voice: toggle voice (this pane)"
+command = "ensar.herdr-voice.toggle-pane"
+description = "herdr-voice: toggle voice (this pane)"
 ```
 
 **Per-pane vs global:** `prefix+shift+v` is the global master switch; `prefix+shift+p` toggles just the focused pane. Set `sessionDefault: "off"` (see [Configuration](#configuration)) to start every session silent and opt the ones you want in with `prefix+shift+p`; leave it `on` to talk everywhere and silence the noisy ones. See [Keybinds](#keybinds) for exactly how they combine.
@@ -191,13 +191,13 @@ ______________________________________________________________________
 
 ## Keybinds
 
-herd-voice exposes herdr **plugin actions**; bind the ones you want in `~/.config/herdr/config.toml` (snippet in [Host setup](#host-where-claude-code-runs)), then run `herdr server reload-config`. `prefix` is herdr's own leader key (whatever you've set it to in herdr).
+herdr-voice exposes herdr **plugin actions**; bind the ones you want in `~/.config/herdr/config.toml` (snippet in [Host setup](#host-where-claude-code-runs)), then run `herdr server reload-config`. `prefix` is herdr's own leader key (whatever you've set it to in herdr).
 
 | Shortcut         | herdr action                           | What it does                                                                      |
 | ---------------- | -------------------------------------- | --------------------------------------------------------------------------------- |
-| `prefix+shift+v` | `ensar.herd-voice.toggle`              | **Global master** on/off — silences or re-enables voice for the whole machine.    |
-| `prefix+shift+p` | `ensar.herd-voice.toggle-pane`         | **This pane only** — toggles voice for the focused Claude pane (opt-in override). |
-| *(unbound)*      | `ensar.herd-voice.enable` / `.disable` | Force the global master on / off (same as `herdr-voice enable` / `disable`).      |
+| `prefix+shift+v` | `ensar.herdr-voice.toggle`              | **Global master** on/off — silences or re-enables voice for the whole machine.    |
+| `prefix+shift+p` | `ensar.herdr-voice.toggle-pane`         | **This pane only** — toggles voice for the focused Claude pane (opt-in override). |
+| *(unbound)*      | `ensar.herdr-voice.enable` / `.disable` | Force the global master on / off (same as `herdr-voice enable` / `disable`).      |
 
 The shortcut keys above are just suggestions — you pick them in your herdr config; the **action ids** are what matter.
 
@@ -212,7 +212,7 @@ Show the voice state in your Claude Code prompt (`🔈 voice` on / `🔇 voice` 
 **A) Call this repo's segment script:**
 
 ```sh
-seg=$("$HOME/Projects/herd-voice/statusline/herd-voice-segment.sh")   # "🔈 voice" / "🔇 voice"
+seg=$("$HOME/Projects/herdr-voice/statusline/herdr-voice-segment.sh")   # "🔈 voice" / "🔇 voice"
 ```
 
 **B) Or inline a colored snippet** into your own statusLine script (the one `statusLine.command` in `~/.claude/settings.json` points to):
@@ -264,13 +264,13 @@ herdr-voice restart                           # (host: also works via launchctl 
 TOKEN=$(jq -r .token ~/.herdr-voice/config.json)
 curl -X POST http://127.0.0.1:8973/speak \
   -H "X-Voice-Token: $TOKEN" -H "Content-Type: application/json" \
-  -d '{"text":"Hello from herd-voice"}'
+  -d '{"text":"Hello from herdr-voice"}'
 
 # Watch remote presence (register/deregister) on the host
 tail -f ~/.herdr-voice/logs/herdr-voice.log | grep -i register
 
 # Plugin action history (did toggle run?)
-herdr plugin log list --plugin ensar.herd-voice
+herdr plugin log list --plugin ensar.herdr-voice
 ```
 
 **No sound?** Walk the checklist: `enabled=true` → router `/health` ok → `say -v <voice> hello` works → volume/output device → (remote) the `herdr --remote` session shows a `register` line in the host log.
@@ -284,7 +284,7 @@ herdr-voice uninstall        # asks to confirm
 herdr-voice uninstall --yes  # no prompt
 ```
 
-Removes: the launchd daemon + plist, the CLI (`~/.local/bin/herdr-voice`), and `~/.herdr-voice/` (config + token). **On a host it also** strips the herd-voice Claude hooks from `settings.json` (others preserved) and uninstalls the herdr plugin. **By hand:** the statusLine snippet and the herdr keybinds (`prefix+shift+v`, `prefix+shift+p`).
+Removes: the launchd daemon + plist, the CLI (`~/.local/bin/herdr-voice`), and `~/.herdr-voice/` (config + token). **On a host it also** strips the herdr-voice Claude hooks from `settings.json` (others preserved) and uninstalls the herdr plugin. **By hand:** the statusLine snippet and the herdr keybinds (`prefix+shift+v`, `prefix+shift+p`).
 
 ______________________________________________________________________
 

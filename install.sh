@@ -70,15 +70,15 @@ launchctl load -w "$PLIST"; sleep 1
 if [ "$MODE" = host ]; then
   curl -fsS "http://127.0.0.1:8973/health" >/dev/null 2>&1 && echo "router up" || echo "router health FAIL"
 
-  # Claude hooks -> ~/.herdr-voice/src (idempotent; existing herd-voice entries removed first)
+  # Claude hooks -> ~/.herdr-voice/src (idempotent; existing herdr-voice entries removed first)
   CMD_STOP="\"$NODE\" \"$APP/src/speak-summary.mjs\""
   CMD_NOTIFY="\"$NODE\" \"$APP/src/notify-cue.mjs\""
   [ -f "$SETTINGS" ] || echo '{}' > "$SETTINGS"
   tmp=$(mktemp)
   jq --arg stop "$CMD_STOP" --arg notify "$CMD_NOTIFY" '
     .hooks = (.hooks // {})
-    | .hooks.Stop = ((.hooks.Stop // []) | map(select(((.hooks[]?.command) // "") | test("herd-?voice") | not)))
-    | .hooks.Notification = ((.hooks.Notification // []) | map(select(((.hooks[]?.command) // "") | test("herd-?voice") | not)))
+    | .hooks.Stop = ((.hooks.Stop // []) | map(select(((.hooks[]?.command) // "") | test("herdr?-voice") | not)))
+    | .hooks.Notification = ((.hooks.Notification // []) | map(select(((.hooks[]?.command) // "") | test("herdr?-voice") | not)))
     | .hooks.Stop += [{"hooks":[{"type":"command","command":$stop}]}]
     | .hooks.Notification += [{"matcher":"permission_prompt|idle_prompt","hooks":[{"type":"command","command":$notify}]}]
   ' "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"

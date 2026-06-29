@@ -46,7 +46,7 @@ else
   set_global "$new"; scope="global"
 fi
 
-if [ "$new" = true ]; then printf '\033]0;🔈 herd-voice on\007'; msg=$(hv_str voiceOnText 'Voice on.' 'Ses açıldı.'); else printf '\033]0;herd-voice off\007'; msg=$(hv_str voiceOffText 'Voice off.' 'Ses kapandı.'); fi
+if [ "$new" = true ]; then printf '\033]0;🔈 herdr-voice on\007'; msg=$(hv_str voiceOnText 'Voice on.' 'Ses açıldı.'); else printf '\033]0;herdr-voice off\007'; msg=$(hv_str voiceOffText 'Voice off.' 'Ses kapandı.'); fi
 printf '[%s] [INFO] %s (%s)\n' "$(date -u +%FT%TZ)" "$([ "$new" = true ] && echo ENABLE || echo DISABLE)" "$scope" >> "$LOG" 2>/dev/null || true
 # spoken confirmation only when the global master is on (respect master mute)
 TOKEN=$(jq -r '.token // ""' "$CFG"); HOST=$(jq -r '.host // "127.0.0.1"' "$CFG"); PORT=$(jq -r '.port // 8973' "$CFG")
@@ -55,4 +55,4 @@ if [ "$(global_enabled)" = true ] && [ -n "$TOKEN" ]; then
     -H "x-voice-token: $TOKEN" -H 'content-type: application/json' \
     -d "{\"text\":\"$msg\"}" >/dev/null 2>&1 || true
 fi
-echo "herd-voice $scope enabled=$new"
+echo "herdr-voice $scope enabled=$new"
