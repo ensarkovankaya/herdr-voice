@@ -4,30 +4,51 @@ import { join } from 'node:path';
 import { stringsFor } from './strings.mjs';
 
 const DEFAULTS = {
-  token: '',
-  host: '127.0.0.1',
-  port: 8973,
-  language: 'en',
-  voice: 'Samantha',
-  enabled: false,
-  sessionDefault: 'on',
-  role: 'host',
-  remoteHost: '',
-  remoteTtlMs: 3_600_000,
-  forwardTimeoutMs: 1500,
-  postTimeoutMs: 1500,
+  token: '', host: '127.0.0.1', port: 8973, language: 'en',
+  enabled: false, sessionDefault: 'on', role: 'host', remoteHost: '',
+  remoteTtlMs: 3_600_000, forwardTimeoutMs: 1500, postTimeoutMs: 1500,
 };
 
+const TTS_DEFAULTS = {
+  provider: 'say',
+  say: { voice: 'Samantha' },
+  piper: { cmd: 'python3 -m piper', voice: 'en_US-lessac-medium', dataDir: join(homedir(), '.herdr-voice', 'voices') },
+  gemini: { model: 'gemini-2.5-flash-preview-tts', voice: 'Kore', apiKeyEnv: 'GEMINI_API_KEY', languageCode: '' },
+};
+const AUDIO_DEFAULTS = { player: 'auto' };
+const SUMMARIZE_DEFAULTS = { mode: 'heuristic', maxLen: 240, llm: {}, command: {} };
+
 export function configPath() {
-  return process.env.HERD_VOICE_CONFIG
-    || join(homedir(), '.herdr-voice', 'config.json');
+  return process.env.HERD_VOICE_CONFIG || join(homedir(), '.herdr-voice', 'config.json');
+}
+
+// v1 stored a flat `voice`; v2 nests it under tts.say.voice. Only synthesize a
+// tts block when the config predates v2 (no tts key).
+export function migrateConfig(raw) {
+  const out = { ...raw };
+  if (!out.tts) out.tts = { provider: 'say', say: { voice: raw.voice || TTS_DEFAULTS.say.voice } };
+  return out;
+}
+
+function mergeTts(tts = {}) {
+  return {
+    provider: tts.provider || TTS_DEFAULTS.provider,
+    say: { ...TTS_DEFAULTS.say, ...(tts.say || {}) },
+    piper: { ...TTS_DEFAULTS.piper, ...(tts.piper || {}) },
+    gemini: { ...TTS_DEFAULTS.gemini, ...(tts.gemini || {}) },
+  };
 }
 
 export function loadConfig() {
   let raw = {};
-  try { raw = JSON.parse(readFileSync(configPath(), 'utf8')); } catch { /* fall back to defaults */ }
+  try { raw = JSON.parse(readFileSync(configPath(), 'utf8')); } catch { /* defaults */ }
+  raw = migrateConfig(raw);
   const merged = { ...DEFAULTS, ...raw };
-  // Spoken strings default to the language pack; explicit config fields win.
+  merged.tts = mergeTts(raw.tts);
+  merged.audio = { ...AUDIO_DEFAULTS, ...(raw.audio || {}) };
+  merged.summarize = { ...SUMMARIZE_DEFAULTS, ...(raw.summarize || {}) };
+  // Backward compat: v1 code reads c.voice; alias to tts.say.voice.
+  merged.voice = merged.tts.say.voice;
   const pack = stringsFor(merged.language);
   merged.cue = raw.cue ?? pack.cue;
   merged.fallback = raw.fallback ?? pack.fallback;
