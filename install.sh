@@ -110,8 +110,7 @@ if [ "$MODE" = host ]; then
   ' "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
   echo "Claude hooks wired to ~/.herdr-voice/src"
 
-  # plugin (render manifest + link); toggle reads the new config
-  sed -e "s#@ROOT@#$ROOT#g" "$ROOT/plugin/herdr-plugin.toml.tmpl" > "$ROOT/plugin/herdr-plugin.toml"
+  # plugin (link); toggle reads the new config
   herdr plugin link "$ROOT/plugin" >/dev/null 2>&1 || echo "warning: herdr plugin link failed"
 fi
 

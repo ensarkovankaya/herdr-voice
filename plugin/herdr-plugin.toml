@@ -1,6 +1,6 @@
-id = "ensar.herdr-voice"
+id = "herdr-voice"
 name = "herdr-voice"
-version = "1.0.0"
+version = "2.0.0-rc.2"
 min_herdr_version = "0.7.0"
 description = "Speak Claude Code summaries on your active device (macOS say)."
 platforms = ["macos"]

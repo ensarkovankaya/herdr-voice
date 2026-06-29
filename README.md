@@ -53,7 +53,7 @@ Claude Code (host) finishes a task / needs approval
 | `src/lib/strings.mjs`                            | Built-in spoken-string packs (`en`, `tr`), selected by `config.language`.                                                                                                                                  |
 | `src/lib/{config,http,logger,presence,pane}.mjs` | config loader · tiny HTTP helpers · rotating logger · presence watcher · per-pane override resolver.                                                                                                       |
 | `bin/herdr-voice`                                | **CLI:** `start/stop/restart/status/logs/enable/disable/uninstall` — manages this machine's daemon.                                                                                                        |
-| `plugin/`                                        | **herdr plugin** (`ensar.herdr-voice`): toggle (global) / toggle-pane / enable / disable actions.                                                                                                          |
+| `plugin/`                                        | **herdr plugin** (`herdr-voice`): toggle (global) / toggle-pane / enable / disable actions.                                                                                                          |
 | `launchd/dev.herdr-voice.plist.tmpl`             | launchd template for both the router (host) and the sink (remote). macOS only.                                                                                                                             |
 | `service/dev.herdr-voice.service.tmpl`           | systemd unit template. Linux only.                                                                                                                                                                         |
 
@@ -102,14 +102,14 @@ That's it — finish a task and you'll hear it. To toggle with keybinds, add the
 [[keys.command]]
 key = "prefix+shift+v"
 type = "plugin_action"
-command = "ensar.herdr-voice.toggle"
+command = "herdr-voice.toggle"
 description = "herdr-voice: toggle voice (global)"
 
 # this pane only (overrides global for the focused Claude pane)
 [[keys.command]]
 key = "prefix+shift+p"
 type = "plugin_action"
-command = "ensar.herdr-voice.toggle-pane"
+command = "herdr-voice.toggle-pane"
 description = "herdr-voice: toggle voice (this pane)"
 ```
 
@@ -281,9 +281,9 @@ herdr-voice exposes herdr **plugin actions**; bind the ones you want in `~/.conf
 
 | Shortcut         | herdr action                            | What it does                                                                      |
 | ---------------- | --------------------------------------- | --------------------------------------------------------------------------------- |
-| `prefix+shift+v` | `ensar.herdr-voice.toggle`              | **Global master** on/off — silences or re-enables voice for the whole machine.    |
-| `prefix+shift+p` | `ensar.herdr-voice.toggle-pane`         | **This pane only** — toggles voice for the focused Claude pane (opt-in override). |
-| *(unbound)*      | `ensar.herdr-voice.enable` / `.disable` | Force the global master on / off (same as `herdr-voice enable` / `disable`).      |
+| `prefix+shift+v` | `herdr-voice.toggle`              | **Global master** on/off — silences or re-enables voice for the whole machine.    |
+| `prefix+shift+p` | `herdr-voice.toggle-pane`         | **This pane only** — toggles voice for the focused Claude pane (opt-in override). |
+| *(unbound)*      | `herdr-voice.enable` / `.disable` | Force the global master on / off (same as `herdr-voice enable` / `disable`).      |
 
 The shortcut keys above are just suggestions — you pick them in your herdr config; the **action ids** are what matter.
 
@@ -356,7 +356,7 @@ curl -X POST http://127.0.0.1:8973/speak \
 tail -f ~/.herdr-voice/logs/herdr-voice.log | grep -i register
 
 # Plugin action history (did toggle run?)
-herdr plugin log list --plugin ensar.herdr-voice
+herdr plugin log list --plugin herdr-voice
 ```
 
 **No sound?** Walk the checklist: `enabled=true` → router `/health` ok → TTS provider installed/configured → OS audio player works → volume/output device → (remote) the `herdr --remote` session shows a `register` line in the host log.

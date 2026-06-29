@@ -59,7 +59,7 @@ case "${1:-status}" in
           | .hooks.Notification = ((.hooks.Notification // []) | map(select(((.hooks[]?.command) // "") | test("herdr?-voice") | not)))' \
           "$S" > "$tmp" && mv -f "$tmp" "$S"
       fi
-      herdr plugin uninstall ensar.herdr-voice >/dev/null 2>&1 || herdr plugin unlink ensar.herdr-voice >/dev/null 2>&1 || true
+      herdr plugin uninstall herdr-voice >/dev/null 2>&1 || herdr plugin unlink herdr-voice >/dev/null 2>&1 || true
       echo "Note: remove the statusLine snippet and the herdr keybinds (prefix+shift+v, prefix+shift+p) by hand."
     fi
     rm -rf "$APP"

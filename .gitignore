@@ -3,6 +3,5 @@ node_modules/
 .DS_Store
 .env
 .superpowers/
-plugin/herdr-plugin.toml
 
 docs/
