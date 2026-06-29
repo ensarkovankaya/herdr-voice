@@ -13,6 +13,7 @@ ______________________________________________________________________
 - 🔔 **Speaks on the moments that matter** — task done, or approval/input needed.
 - 📍 **Follows you across devices** — presence-aware routing over [Tailscale](https://tailscale.com); audio plays where you are.
 - 🗣️ **Any voice, any language** — uses any installed macOS voice; ships with `en` and `tr` string packs, fully overridable from config.
+- 🧹 **Speech-friendly summaries** — markdown, code blocks, and emoji are stripped, so you hear the message, not the syntax.
 - 🔌 **herdr plugin** — toggle voice on/off with a keybind, see status in your prompt.
 - 🪶 **Tiny footprint** — daemons are Node.js stdlib only (zero npm deps); CLI is Bash.
 - 🛠️ **Real service** — launchd startup, rotating logs, one-command install & uninstall.
@@ -47,7 +48,7 @@ Claude Code (host Mac) finishes a task / needs approval
 | `src/voice-sink.mjs`                              | **Remote daemon.** `/speak {text}` → `say -v <voice>`. Installed as a launchd agent by `./install.sh remote`.                                                                                        |
 | `src/speak-summary.mjs`                           | **Claude Stop hook.** Reads the last assistant message from the transcript → `summarize` → POSTs to the router. Never throws (won't block Claude).                                                   |
 | `src/notify-cue.mjs`                              | **Claude Notification hook.** Speaks a short fixed cue when approval/input is needed.                                                                                                                |
-| `src/lib/summarize.mjs`                           | Strips markdown/code, reduces to the first sentence(s) (≤240 chars); falls back to a fixed phrase when empty.                                                                                        |
+| `src/lib/summarize.mjs`                           | Strips markdown/code/emoji, reduces to the first sentence(s) (≤240 chars); falls back to a fixed phrase when empty.                                                                                  |
 | `src/lib/strings.mjs`                             | Built-in spoken-string packs (`en`, `tr`), selected by `config.language`.                                                                                                                            |
 | `src/lib/{config,http,speak,logger,presence}.mjs` | config loader · tiny HTTP helpers · serial `say` queue · rotating logger · presence watcher.                                                                                                         |
 | `bin/herdr-voice`                                 | **CLI:** `start/stop/restart/status/logs/enable/disable/uninstall` — manages this machine's daemon.                                                                                                  |
