@@ -189,3 +189,33 @@ A non-2xx status, a timeout, or a missing/empty/non-string value at
 
 Tune `maxLen` to how much you want to hear; remember it caps the final string in
 every mode.
+
+## Session-aware spoken prefix
+
+Every spoken utterance is prefixed with a short label that identifies the
+session, so you immediately know *which* Claude session is talking.
+
+**In `claude` mode** (and `recap.enabled: true`) the prefix is a rolling recap
+— a short noun phrase maintained by the LLM. On the first Stop after a new
+session (or after `recap.everyTurns` turns with no refresh) the recap is
+regenerated from the previous recap plus the new turns since the last
+generation; between refreshes the cached value is reused at zero cost. In all
+other summarizer modes the prefix is the session's `ai-title` (Claude's
+built-in session title), extracted from the transcript with no LLM call.
+
+**The Notification cue** (permission prompt, idle) reads the cached prefix from
+the session store — it never triggers an LLM call of its own.
+
+The prefix and body are joined by `recapTemplate` (default `"${recap}: ${body}"`).
+
+```jsonc
+{
+  "recapTemplate": "${recap}: ${body}",
+  "summarize": {
+    "mode": "claude",
+    "recap": { "enabled": true, "everyTurns": 5, "maxLen": 60, "pruneAfterDays": 30, "prompt": "" }
+  }
+}
+```
+
+`recap` fields — see [configuration.md](configuration.md#summarize--how-the-message-is-condensed) for the full table.

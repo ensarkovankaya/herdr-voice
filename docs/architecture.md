@@ -131,6 +131,17 @@ so most config edits take
 effect without a restart — **except** TTS provider changes, which are cached by
 the speaker (restart with `herdr-voice restart`).
 
+## Session store
+
+`~/.herdr-voice/sessions/<sessionId>.json` holds the spoken `prefix` for a
+Claude session plus rolling-recap bookkeeping fields (`recap`,
+`turnsSinceRecap`, `transcriptChars`). The **Stop hook** writes and updates
+this file on every turn — it resolves the prefix (generating a new LLM recap
+when due) and prepends it to the spoken utterance. The **Notification hook**
+reads the cached `prefix` from the same file to prepend to the cue; it never
+triggers an LLM call. Files are pruned after `recap.pruneAfterDays` (default
+30\) days, measured by mtime. See `src/lib/session-store.mjs`.
+
 ## Logging
 
 All processes write to `~/.herdr-voice/logs/herdr-voice.log` through

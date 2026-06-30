@@ -108,6 +108,36 @@ summarizer falls back to `heuristic`; an empty heuristic result falls back to
 the fixed `fallback` string. Full details and recipes:
 [summarizer.md](summarizer.md).
 
+### `summarize.recap` — rolling session prefix
+
+Controls the session-aware spoken prefix. Only used when `summarize.mode` is
+`claude`; when mode is anything else the prefix is the `ai-title` and these
+settings are ignored.
+
+| Field            | Default | Meaning                                                                                                                                                            |
+| ---------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `enabled`        | `true`  | When `false`, prefix falls back to the session's `ai-title` even in `claude` mode.                                                                                 |
+| `everyTurns`     | `5`     | Regenerate the recap after this many Stop-hook turns. The first turn always generates (no cached recap yet).                                                       |
+| `maxLen`         | `60`    | Hard character cap on the generated recap phrase.                                                                                                                  |
+| `pruneAfterDays` | `30`    | Delete session files whose last-modified time is older than this many days.                                                                                        |
+| `prompt`         | `""`    | Custom instruction for the LLM. Empty string uses the built-in prompt (short noun-phrase, ≤6 words). `${language}` is substituted with the resolved language name. |
+
+The recap is generated via `summarize.claude` — it reuses `claude.cmd`,
+`claude.model`, and `claude.timeoutMs`. The recap language inherits
+`summarize.claude.language`.
+
+## `recapTemplate` — spoken prefix format
+
+Controls how the session prefix and the summarized body are joined into the
+final spoken string.
+
+| Field           | Default               | Meaning                                                                                                 |
+| --------------- | --------------------- | ------------------------------------------------------------------------------------------------------- |
+| `recapTemplate` | `"${recap}: ${body}"` | Template string. `${recap}` is replaced with the session prefix; `${body}` with the summarized message. |
+
+Set this in the locale pack or as a top-level key to change the join
+punctuation or word order. The recap language inherits `summarize.claude.language`.
+
 ## Spoken strings & localization
 
 `language` picks a built-in pack — one JSON file per language in
