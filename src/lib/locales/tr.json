@@ -3,5 +3,6 @@
   "cueIdle": "Seni bekliyorum.",
   "fallback": "Tamamlandı.",
   "voiceOn": "Ses açıldı.",
-  "voiceOff": "Ses kapandı."
+  "voiceOff": "Ses kapandı.",
+  "recapTemplate": "${recap}: ${body}"
 }

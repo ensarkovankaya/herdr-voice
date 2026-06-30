@@ -16,7 +16,10 @@ const TTS_DEFAULTS = {
   gemini: { model: 'gemini-2.5-flash-preview-tts', voice: 'Kore', apiKeyEnv: 'GEMINI_API_KEY', languageCode: '' },
 };
 const AUDIO_DEFAULTS = { player: 'auto' };
-const SUMMARIZE_DEFAULTS = { mode: 'heuristic', maxLen: 240, llm: {}, command: {}, claude: {} };
+const SUMMARIZE_DEFAULTS = {
+  mode: 'heuristic', maxLen: 240, llm: {}, command: {}, claude: {},
+  recap: { enabled: true, everyTurns: 5, maxLen: 60, pruneAfterDays: 30, prompt: '' },
+};
 
 // On-disk config path; HERD_VOICE_CONFIG overrides it (used by tests).
 export function configPath() {
@@ -43,11 +46,13 @@ export function loadConfig() {
   merged.tts = mergeTts(raw.tts);
   merged.audio = { ...AUDIO_DEFAULTS, ...(raw.audio || {}) };
   merged.summarize = { ...SUMMARIZE_DEFAULTS, ...(raw.summarize || {}) };
+  merged.summarize.recap = { ...SUMMARIZE_DEFAULTS.recap, ...((raw.summarize || {}).recap || {}) };
   const pack = stringsFor(merged.language);
   merged.cue = raw.cue ?? pack.cue;
   merged.cueIdle = raw.cueIdle ?? pack.cueIdle;
   merged.fallback = raw.fallback ?? pack.fallback;
   merged.voiceOnText = raw.voiceOnText ?? pack.voiceOn;
   merged.voiceOffText = raw.voiceOffText ?? pack.voiceOff;
+  merged.recapTemplate = raw.recapTemplate ?? pack.recapTemplate;
   return merged;
 }

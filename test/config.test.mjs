@@ -90,3 +90,23 @@ test('loadConfig: no tts block → say defaults (no v1 migration)', () => withCo
   assert.equal(c.tts.provider, 'say');
   assert.equal(c.tts.say.voice, 'Samantha'); // flat v1 `voice` is ignored, not migrated
 }));
+
+test('loadConfig: summarize.recap defaults present + recapTemplate', () => withConfig({}, () => {
+  const c = loadConfig();
+  assert.equal(c.summarize.recap.enabled, true);
+  assert.equal(c.summarize.recap.everyTurns, 5);
+  assert.equal(c.summarize.recap.maxLen, 60);
+  assert.equal(c.summarize.recap.pruneAfterDays, 30);
+  assert.equal(c.recapTemplate, '${recap}: ${body}');
+}));
+
+test('loadConfig: partial recap merges over defaults', () => withConfig({ summarize: { recap: { everyTurns: 3 } } }, () => {
+  const c = loadConfig();
+  assert.equal(c.summarize.recap.everyTurns, 3);   // overridden
+  assert.equal(c.summarize.recap.enabled, true);   // default preserved
+  assert.equal(c.summarize.recap.maxLen, 60);      // default preserved
+}));
+
+test('loadConfig: recapTemplate overridable', () => withConfig({ recapTemplate: '${recap} — ${body}' }, () => {
+  assert.equal(loadConfig().recapTemplate, '${recap} — ${body}');
+}));

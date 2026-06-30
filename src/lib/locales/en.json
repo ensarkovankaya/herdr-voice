@@ -3,5 +3,6 @@
   "cueIdle": "Waiting for you.",
   "fallback": "Done.",
   "voiceOn": "Voice on.",
-  "voiceOff": "Voice off."
+  "voiceOff": "Voice off.",
+  "recapTemplate": "${recap}: ${body}"
 }
