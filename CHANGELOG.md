@@ -7,7 +7,7 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [2.0.0] — 2026-06-29
 
 Cross-platform release with pluggable speech and summarization. Current
-pre-release: `2.0.0-rc.11`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.md).
+pre-release: `2.0.0-rc.12`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.md).
 
 ### Added
 
@@ -82,6 +82,15 @@ pre-release: `2.0.0-rc.11`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.m
   engine and voice model said it, e.g.
   `"provider":"piper","voice":"tr_TR-dfki-medium"`. `forward` events are
   unchanged (synthesis happens on the remote sink, which logs its own provider).
+- **TTS provider fallback chain** — `tts.providers` is now an ordered list; the
+  speaker tries each until one produces audio, logging `tts_fallback {provider, reason, next}` on every miss (e.g. Gemini `http_429` quota), `tts_spoke` for
+  the provider that succeeds after a fallback, and `tts_all_failed` if none do.
+  Each provider's `speak()` now returns `{ok, reason}`. Omitting `providers`
+  keeps the single `provider` (backward compatible). See
+  [docs/providers.md](docs/providers.md).
+- **Gemini inline `apiKey`** — the `gemini` block accepts `apiKey` directly in
+  config (alongside `apiKeyEnv`, which reads from the environment); `apiKey`
+  wins when both are present.
 
 ### Removed
 
@@ -104,4 +113,4 @@ Initial release.
   service; one-command install/uninstall.
 
 [1.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v1.0.0
-[2.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v2.0.0-rc.11
+[2.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v2.0.0-rc.12
