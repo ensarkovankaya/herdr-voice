@@ -8,46 +8,8 @@ import { makeClaudeSummarizer } from './lib/summarize/claude.mjs';
 import { RECURSION_GUARD_ENV } from './lib/summarize/spawn.mjs';
 import { postJson } from './lib/http.mjs';
 import { voiceEnabledForPane } from './lib/pane.mjs';
-
-// Walk the JSONL transcript backwards and return the most recent assistant
-// message's text (joining its text blocks); '' if none is found.
-export function extractLastAssistantText(jsonl) {
-  const lines = jsonl.split('\n');
-  for (let i = lines.length - 1; i >= 0; i--) {
-    const line = lines[i].trim();
-    if (!line) continue;
-    let o;
-    try { o = JSON.parse(line); } catch { continue; }
-    const msg = o && typeof o.message === 'object' && o.message ? o.message : o;
-    const isAssistant = o.type === 'assistant' || (msg && msg.role === 'assistant');
-    if (!isAssistant) continue;
-    const content = msg.content;
-    if (typeof content === 'string') { if (content.trim()) return content.trim(); continue; }
-    if (Array.isArray(content)) {
-      const texts = content
-        .filter((b) => b && b.type === 'text' && typeof b.text === 'string')
-        .map((b) => b.text);
-      if (texts.length) return texts.join('\n').trim();
-    }
-  }
-  return '';
-}
-
-// Walk the JSONL transcript backwards and return the most recent session title
-// (Claude's auto-generated `ai-title` line); '' if none is present.
-export function extractSessionTitle(jsonl) {
-  const lines = jsonl.split('\n');
-  for (let i = lines.length - 1; i >= 0; i--) {
-    const line = lines[i].trim();
-    if (!line) continue;
-    let o;
-    try { o = JSON.parse(line); } catch { continue; }
-    if (o && o.type === 'ai-title' && typeof o.aiTitle === 'string' && o.aiTitle.trim()) {
-      return o.aiTitle.trim();
-    }
-  }
-  return '';
-}
+import { extractLastAssistantText, extractSessionTitle } from './lib/transcript.mjs';
+export { extractLastAssistantText, extractSessionTitle };
 
 // The Stop hook can fire before Claude has finished flushing the final
 // assistant message to the transcript, so a naive read returns the PREVIOUS
