@@ -37,6 +37,18 @@ pre-release: `2.0.0-rc.7`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.md
   while permission prompts and other notifications keep `cue` (fallback to `cue`
   when unset). New locale/config key `cueIdle` (`en`: "Waiting for you.", `tr`:
   "Seni bekliyorum.").
+- **Session-aware spoken prefix** — every Stop summary and Notification cue is
+  prefixed with a short per-session label so multi-session audio is attributable
+  ("Search app release: approval needed."). In `claude` summarize mode it's a
+  rolling recap of the session's theme, regenerated every
+  `summarize.recap.everyTurns` turns (default 5) from the previous recap plus the
+  turns since; in other modes it's Claude's transcript auto-title. Cached per
+  session under `~/.herdr-voice/sessions/` (pruned after
+  `summarize.recap.pruneAfterDays`, default 30); the cue path reads the cache
+  with no extra LLM call. New config: the `summarize.recap` block
+  (`enabled`/`everyTurns`/`maxLen`/`pruneAfterDays`/`prompt`) and the
+  `recapTemplate` join string (`${recap}: ${body}`). See
+  [docs/summarizer.md](docs/summarizer.md).
 
 ### Changed
 
