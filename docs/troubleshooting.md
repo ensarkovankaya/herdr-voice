@@ -174,5 +174,8 @@ jq -c 'select(.event | test("register|forward|fallback"))' ~/.herdr-voice/logs/h
 
 `speak`/`forward` events carry `sessionId`, `sessionTitle` (summary events only),
 and the herd `workspace`/`tab`/`pane` ids so you can tell which session is
-talking. `WARN` lines name the failing component via `event` (`tts_error`,
-`gemini_error`, `presence_failed`), with details in the fields.
+talking. When a TTS provider can't produce audio the speaker walks the
+`tts.providers` fallback chain, logging `tts_fallback` (`{provider, reason, next}` — e.g. `reason:"http_429"` on a Gemini quota hit) for each miss,
+`tts_spoke` for the provider that finally speaks, and `tts_all_failed` if none
+do. Other `WARN` lines name the failing component via `event` (e.g.
+`presence_failed`), with details in the fields.

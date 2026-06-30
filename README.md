@@ -13,8 +13,10 @@ ______________________________________________________________________
 - 🔔 **Speaks on the moments that matter** — task done, or approval/input needed.
 - 📍 **Follows you across devices** — presence-aware routing over [Tailscale](https://tailscale.com); audio plays where you are.
 - 🗣️ **Pluggable TTS** — `say` (macOS built-in), `piper` (local neural, macOS + Linux), or `gemini` (cloud). Any voice, any language.
+- 🔁 **Provider fallback** — list engines in priority order; if one can't speak (cloud quota, missing key, crash) the next takes over automatically, so audio rarely drops.
 - 🧹 **Speech-friendly summaries** — markdown, code blocks, and emoji are stripped. Summarizer is pluggable too: heuristic (default), your logged-in Claude (`claude`, default model Haiku), LLM via HTTP, or any CLI command.
 - 🏷️ **Knows which session is talking** — each summary and approval cue is prefixed with a short per-session label (a rolling recap of the session's theme in `claude` mode, the transcript auto-title otherwise) so you can tell which of several Claude sessions just spoke.
+- 🤫 **Skip the session you're watching** — optionally mute the herdr pane that currently has focus (you watch it finish yourself); only the background sessions speak. Set `muteFocusedPane: true`.
 - 🔌 **herdr plugin** — toggle voice on/off with a keybind, see status in your prompt.
 - 🪶 **Tiny footprint** — daemons are Node.js stdlib only (zero npm deps); CLI is Bash.
 - 🛠️ **Real service** — launchd (macOS) / systemd (Linux) startup, rotating logs, one-command install & uninstall.
@@ -90,7 +92,7 @@ command = "herdr-voice.toggle-pane"
 description = "herdr-voice: toggle voice (this pane)"
 ```
 
-`prefix+shift+v` is the global master switch; `prefix+shift+p` opts the focused pane in or out (see [Keybinds](#keybinds)).
+`prefix+shift+v` is the global master switch; `prefix+shift+p` opts the focused pane in or out (see [Keybinds](#keybinds)). Prefer it automatic? Set `muteFocusedPane: true` in `config.json` and the focused pane stays silent — only background sessions speak.
 
 ### Remote (a second machine — optional)
 

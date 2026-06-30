@@ -38,14 +38,18 @@ language pack.
 
 ## `tts` — speech engine
 
-Selects the provider and carries one settings block per provider. Only the
-selected provider's block is used, but all blocks are merged over defaults so
-switching providers is just a `provider` change.
+Picks the speech engine(s) and carries one settings block per provider. Set an
+ordered `providers` fallback list (tried until one produces audio) and/or a
+single `provider` string — omit `providers` and it defaults to `[provider]`, so
+older configs keep working. Only the speaking provider's block is used, but all
+blocks are merged over defaults, so switching engines is just an array/string
+change.
 
 ```jsonc
 {
   "tts": {
-    "provider": "say",                    // say | piper | gemini
+    "providers": ["gemini", "piper", "say"], // ordered fallback; first to produce audio wins
+    "provider": "gemini",                 // single-engine shorthand (used when "providers" is omitted)
     "say": {
       "voice": "Samantha"                 // any installed macOS voice (say -v '?')
     },
@@ -57,6 +61,7 @@ switching providers is just a `provider` change.
     "gemini": {
       "model": "gemini-2.5-flash-preview-tts",
       "voice": "Kore",
+      "apiKey": "AIza…",                  // inline key, OR set apiKeyEnv below (apiKey wins)
       "apiKeyEnv": "GEMINI_API_KEY",      // env var NAME that holds your API key
       "languageCode": ""                  // e.g. "en-US"; empty = auto-detect
     }
@@ -64,9 +69,11 @@ switching providers is just a `provider` change.
 }
 ```
 
-Defaults by OS: `say` on macOS, `piper` elsewhere. See
-[providers.md](providers.md) for per-provider setup and the full provider
-contract.
+Defaults by OS: `say` on macOS, `piper` elsewhere. When a provider can't speak
+(quota, crash, missing key) the speaker falls back to the next in `providers`
+and logs `tts_fallback`. See
+[providers.md](providers.md#provider-priority--fallback) for the fallback
+contract and per-provider setup.
 
 ## `audio` — player selection
 
