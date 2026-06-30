@@ -74,7 +74,7 @@ test('wrong token → 401', async () => {
 test('SPEAK log carries session + herd meta fields', async () => {
   const logs = [];
   const { s, port } = await start(makeRouter({
-    getConfig: cfgOf(), speak: () => {}, forward: () => Promise.resolve(), now: () => 0,
+    getConfig: cfgOf({ tts: { provider: 'piper', piper: { voice: 'tr_TR-dfki-medium' } } }), speak: () => {}, forward: () => Promise.resolve(), now: () => 0,
     log: (level, event, fields = {}) => logs.push({ level, event, ...fields }) }));
   await postJson(`http://127.0.0.1:${port}/speak`, { text: 'hi', sessionId: 'abcd1234ef', sessionTitle: 'My Title', workspace: 'ws1', tab: 't1', pane: 'w1:p4' }, { token: 'T' });
   await flush();
@@ -85,6 +85,8 @@ test('SPEAK log carries session + herd meta fields', async () => {
   assert.equal(rec.workspace, 'ws1');
   assert.equal(rec.tab, 't1');
   assert.equal(rec.pane, 'w1:p4');
+  assert.equal(rec.provider, 'piper');
+  assert.equal(rec.voice, 'tr_TR-dfki-medium');
   s.close();
 });
 

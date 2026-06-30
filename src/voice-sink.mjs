@@ -20,7 +20,8 @@ export function makeSinkHandler({ getConfig, speak, log }) {
       try { body = await readJsonBody(req); } catch { return sendJson(res, 400, { error: 'bad json' }); }
       if (!cfg.enabled) { log('INFO', 'speak_skipped', { reason: 'disabled' }); return sendJson(res, 200, { skipped: true }); }
       sendJson(res, 202, { ok: true });
-      log('INFO', 'speak', { text: (body.text || '').slice(0, 200), sessionId: body.sessionId, sessionTitle: body.sessionTitle, workspace: body.workspace, tab: body.tab, pane: body.pane });
+      const provider = cfg.tts?.provider || 'say';
+      log('INFO', 'speak', { text: (body.text || '').slice(0, 200), provider, voice: cfg.tts?.[provider]?.voice, sessionId: body.sessionId, sessionTitle: body.sessionTitle, workspace: body.workspace, tab: body.tab, pane: body.pane });
       speak(body.text);
       return;
     }
