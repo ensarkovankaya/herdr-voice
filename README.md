@@ -177,7 +177,7 @@ ______________________________________________________________________
 
 ## Claude status line indicator
 
-Show the voice state in your prompt (`🔈 voice` / `🔇 voice`) by adding a segment to your statusLine script:
+Show the voice state in your prompt by adding a segment to your statusLine script. The icon is the effective state (global master AND this pane), with the global (`G`) and per-pane (`S`) flags shown separately — e.g. `🔈 voice (G:on S:on)`, `🔇 voice (G:on S:off)` (master on, this pane muted), `🔇 voice (G:off S:on)` (master off, this pane opted in):
 
 ```sh
 seg=$("$HOME/Projects/herdr-voice/statusline/herdr-voice-segment.sh")   # per-pane aware
