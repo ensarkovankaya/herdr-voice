@@ -118,3 +118,8 @@ test('loadConfig: partial recap merges over defaults', () => withConfig({ summar
 test('loadConfig: recapTemplate overridable', () => withConfig({ recapTemplate: '${recap} — ${body}' }, () => {
   assert.equal(loadConfig().recapTemplate, '${recap} — ${body}');
 }));
+
+test('loadConfig: muteFocusedPane defaults to false and is overridable', () => {
+  withConfig({}, () => assert.equal(loadConfig().muteFocusedPane, false));
+  withConfig({ muteFocusedPane: true }, () => assert.equal(loadConfig().muteFocusedPane, true));
+});

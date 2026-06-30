@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from './lib/config.mjs';
 import { postJson } from './lib/http.mjs';
-import { voiceEnabledForPane } from './lib/pane.mjs';
+import { voiceEnabledForPane, paneIsFocused } from './lib/pane.mjs';
 import { readSession } from './lib/session-store.mjs';
 import { formatPrefix } from './lib/summarize/recap.mjs';
 
@@ -39,6 +39,8 @@ function readStdin() {
 async function main() {
   const cfg = loadConfig();
   if (!voiceEnabledForPane(cfg)) return;
+  // The foreground session — you can see its prompt yourself, no need to cue it.
+  if (cfg.muteFocusedPane && paneIsFocused()) return;
   let input = {};
   try { input = JSON.parse(await readStdin()); } catch { /* still send the fixed cue */ }
   const sessionId = (input && input.session_id) || '';

@@ -5,7 +5,7 @@ import { stringsFor } from './strings.mjs';
 
 const DEFAULTS = {
   token: '', host: '127.0.0.1', port: 8973, language: 'en',
-  enabled: false, sessionDefault: 'on', role: 'host', remoteHost: '',
+  enabled: false, sessionDefault: 'on', muteFocusedPane: false, role: 'host', remoteHost: '',
   remoteTtlMs: 3_600_000, forwardTimeoutMs: 1500, postTimeoutMs: 1500,
 };
 

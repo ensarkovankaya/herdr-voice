@@ -7,7 +7,7 @@ import { makeCommandSummarizer } from './lib/summarize/command.mjs';
 import { makeClaudeSummarizer } from './lib/summarize/claude.mjs';
 import { RECURSION_GUARD_ENV } from './lib/summarize/spawn.mjs';
 import { postJson } from './lib/http.mjs';
-import { voiceEnabledForPane } from './lib/pane.mjs';
+import { voiceEnabledForPane, paneIsFocused } from './lib/pane.mjs';
 import { extractLastAssistantText, extractSessionTitle } from './lib/transcript.mjs';
 import { makeRecapper, formatPrefix } from './lib/summarize/recap.mjs';
 import { pruneOld } from './lib/session-store.mjs';
@@ -54,6 +54,8 @@ async function main() {
   if (process.env[RECURSION_GUARD_ENV]) return;
   const cfg = loadConfig();
   if (!voiceEnabledForPane(cfg)) return;
+  // The foreground session — you watch it finish yourself, no need to speak it.
+  if (cfg.muteFocusedPane && paneIsFocused()) return;
   let input;
   try { input = JSON.parse(await readStdin()); } catch { return; }
   if (!input.transcript_path) return;

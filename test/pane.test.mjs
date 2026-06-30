@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { paneKey, readPaneOverride, voiceEnabledForPane } from '../src/lib/pane.mjs';
+import { paneKey, readPaneOverride, voiceEnabledForPane, paneIsFocused } from '../src/lib/pane.mjs';
 
 test('paneKey sanitizes non-alphanumerics to _', () => {
   assert.equal(paneKey('w653aa39818c041:p4'), 'w653aa39818c041_p4');
@@ -49,4 +49,21 @@ test('no pane id (outside herdr) follows the master', () => {
   const dir = mkdtempSync(join(tmpdir(), 'hvpane-'));
   assert.equal(voiceEnabledForPane({ enabled: true, sessionDefault: 'off' }, { paneId: '', dir }), true);
   assert.equal(voiceEnabledForPane({ enabled: false }, { paneId: '', dir }), false);
+});
+
+test('paneIsFocused: true only when herdr reports the pane focused', () => {
+  const focused = () => JSON.stringify({ result: { pane: { focused: true } } });
+  const notFocused = () => JSON.stringify({ result: { pane: { focused: false } } });
+  assert.equal(paneIsFocused('w1:p4', { exec: focused }), true);
+  assert.equal(paneIsFocused('w1:p4', { exec: notFocused }), false);
+});
+
+test('paneIsFocused: false without a pane id (outside herdr), never shells out', () => {
+  assert.equal(paneIsFocused('', { exec: () => { throw new Error('should not run'); } }), false);
+});
+
+test('paneIsFocused: false when herdr is unavailable or its output is unusable', () => {
+  assert.equal(paneIsFocused('w1:p4', { exec: () => { throw new Error('ENOENT'); } }), false); // herdr not on PATH / socket down
+  assert.equal(paneIsFocused('w1:p4', { exec: () => 'not json' }), false);
+  assert.equal(paneIsFocused('w1:p4', { exec: () => JSON.stringify({ result: {} }) }), false);
 });

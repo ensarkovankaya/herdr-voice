@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -34,4 +35,18 @@ export function voiceEnabledForPane(cfg, { paneId = process.env.HERDR_PANE_ID, d
   if (ov === 'off') return false;
   if (!paneId) return true;
   return (cfg.sessionDefault || 'on') === 'on';
+}
+
+// Is THIS pane the one the user is currently looking at? Asks herdr for the
+// pane's `focused` flag over its socket API. Returns true ONLY on a definite
+// focused match; any uncertainty (outside herdr, herdr CLI not on PATH, socket
+// error, malformed output) yields false so the caller speaks by default. Used
+// to mute the foreground session — you watch that one finish yourself.
+export function paneIsFocused(paneId = process.env.HERDR_PANE_ID, {
+  exec = (file, args) => execFileSync(file, args, { encoding: 'utf8', timeout: 1000 }),
+} = {}) {
+  if (!paneId) return false;
+  try {
+    return JSON.parse(exec('herdr', ['pane', 'get', paneId]))?.result?.pane?.focused === true;
+  } catch { return false; }
 }
