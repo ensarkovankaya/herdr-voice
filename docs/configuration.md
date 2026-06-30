@@ -136,7 +136,7 @@ final spoken string.
 | `recapTemplate` | `"${recap}: ${body}"` | Template string. `${recap}` is replaced with the session prefix; `${body}` with the summarized message. |
 
 Set this in the locale pack or as a top-level key to change the join
-punctuation or word order. The recap language inherits `summarize.claude.language`.
+punctuation or word order.
 
 ## Spoken strings & localization
 

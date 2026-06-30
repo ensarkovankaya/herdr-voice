@@ -38,10 +38,12 @@ export function extractSessionTitle(jsonl) {
   return '';
 }
 
-// Parse the transcript region appended at/after `fromChars` (the transcript is
-// append-only, so the offset is stable) and render new user+assistant text
-// turns as compact "role: text" lines. Used to feed the rolling recap only the
-// turns since the last recap. Malformed/partial lines are skipped.
+// Parse the transcript region appended at/after `fromChars` (a character
+// offset, not a byte offset — it must match how the writer measures length;
+// the transcript is append-only, so the offset is stable) and render new
+// user+assistant text turns as compact "role: text" lines. Used to feed the
+// rolling recap only the turns since the last recap. Malformed/partial lines
+// are skipped.
 export function extractNewTurns(jsonl, fromChars = 0) {
   const slice = (jsonl || '').slice(Math.max(0, fromChars || 0));
   const out = [];
