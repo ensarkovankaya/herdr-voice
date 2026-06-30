@@ -7,7 +7,7 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [2.0.0] — 2026-06-29
 
 Cross-platform release with pluggable speech and summarization. Current
-pre-release: `2.0.0-rc.12`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.md).
+pre-release: `2.0.0-rc.13`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.md).
 
 ### Added
 
@@ -49,6 +49,14 @@ pre-release: `2.0.0-rc.12`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.m
   (`enabled`/`everyTurns`/`maxLen`/`pruneAfterDays`/`prompt`) and the
   `recapTemplate` join string (`${recap}: ${body}`). See
   [docs/summarizer.md](docs/summarizer.md).
+- **Mute the focused pane** — new top-level `muteFocusedPane` (default `false`).
+  When `true`, both the Stop summary and the Notification cue stay silent for
+  the herdr pane that currently has focus — the session you're actively looking
+  at, which you watch finish yourself — while background sessions keep speaking.
+  Each hook asks herdr whether its own pane is focused (`herdr pane get`, over
+  the socket API) just before speaking; it's a no-op outside herdr or when
+  herdr is unreachable, so the default behavior is unchanged. See
+  [docs/configuration.md](docs/configuration.md#top-level-fields).
 - **`herdr-voice version`** — new CLI subcommand printing the package version
   (also `--version` / `-v`); works without a config or a running daemon. The
   installer now deploys `package.json` to `~/.herdr-voice/` as the version
@@ -113,4 +121,4 @@ Initial release.
   service; one-command install/uninstall.
 
 [1.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v1.0.0
-[2.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v2.0.0-rc.12
+[2.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v2.0.0-rc.13
