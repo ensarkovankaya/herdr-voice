@@ -7,7 +7,7 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [2.0.0] — 2026-06-29
 
 Cross-platform release with pluggable speech and summarization. Current
-pre-release: `2.0.0-rc.10`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.md).
+pre-release: `2.0.0-rc.11`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.md).
 
 ### Added
 
@@ -77,6 +77,11 @@ pre-release: `2.0.0-rc.10`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.m
 - **statusLine segment shows global and per-pane state separately** — the icon
   stays the effective state (global master AND this pane), now annotated with
   the `G` (global) and `S` (this pane's preference) flags, e.g. `🔈 voice (G:on S:on)` / `🔇 voice (G:on S:off)`.
+- **`speak` log lines carry the active TTS `provider` and `voice`** — every
+  spoken utterance (local on the host and on the remote sink) records which
+  engine and voice model said it, e.g.
+  `"provider":"piper","voice":"tr_TR-dfki-medium"`. `forward` events are
+  unchanged (synthesis happens on the remote sink, which logs its own provider).
 
 ### Removed
 
@@ -99,4 +104,4 @@ Initial release.
   service; one-command install/uninstall.
 
 [1.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v1.0.0
-[2.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v2.0.0-rc.10
+[2.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v2.0.0-rc.11
