@@ -17,7 +17,7 @@ const DEFAULT_PROMPT =
 
 // Map a BCP-47 code to its English display name ("tr" -> "Turkish"); fall back
 // to the code itself for anything Intl can't name.
-function languageName(code) {
+export function languageName(code) {
   try { return new Intl.DisplayNames(['en'], { type: 'language' }).of(code) || code; }
   catch { return code; }
 }
