@@ -15,3 +15,65 @@ export function shouldRefreshRecap({ turnsSinceRecap = 0, everyTurns = 5, hasRec
   if (!hasRecap) return true;
   return turnsSinceRecap >= everyTurns;
 }
+
+// Join the session prefix and the body via the locale template
+// (cfg.recapTemplate, default "${recap}: ${body}").
+export function formatPrefix(prefix, body, cfg) {
+  const tmpl = (cfg && cfg.recapTemplate) || '${recap}: ${body}';
+  return tmpl.replace(/\$\{recap\}/g, prefix).replace(/\$\{body\}/g, body);
+}
+
+// Resolve the spoken prefix for a session and persist it for the cue path.
+// claude mode → rolling recap (LLM every N turns); other modes → ai-title.
+// Every outside-world call is injectable; nothing throws.
+export function makeRecapper({
+  spawn,
+  readSession = realReadSession,
+  writeSession = realWriteSession,
+  now = () => Date.now(),
+} = {}) {
+  return {
+    async resolvePrefix({ sessionId, jsonl, cfg }) {
+      const sum = (cfg && cfg.summarize) || {};
+      const recapCfg = sum.recap || {};
+      const claudeCfg = sum.claude || {};
+      const updatedAt = new Date(now()).toISOString();
+
+      // Non-claude modes (or recap disabled): free ai-title, no LLM.
+      if (sum.mode !== 'claude' || !recapCfg.enabled) {
+        const prefix = extractSessionTitle(jsonl);
+        writeSession(sessionId, { prefix, updatedAt });
+        return prefix;
+      }
+
+      const s = readSession(sessionId) || {};
+      const everyTurns = recapCfg.everyTurns || 5;
+      const maxLen = recapCfg.maxLen || 60;
+
+      if (shouldRefreshRecap({ turnsSinceRecap: s.turnsSinceRecap || 0, everyTurns, hasRecap: !!s.recap })) {
+        try {
+          const prompt = (recapCfg.prompt || DEFAULT_RECAP_PROMPT)
+            .replace(/\$\{language\}/g, languageName(claudeCfg.language || 'en'));
+          const input = `CURRENT THEME: ${s.recap || '(none)'}\nLATEST ACTIVITY:\n${extractNewTurns(jsonl, s.transcriptChars || 0)}`;
+          const args = ['-p', '--model', claudeCfg.model || 'haiku', prompt];
+          const out = await spawnCapture(claudeCfg.cmd || 'claude', args, { spawn, input, timeoutMs: claudeCfg.timeoutMs || 12000 });
+          const recap = shorten(sanitizeForSpeech(out), maxLen);
+          if (!recap) throw new Error('empty');
+          writeSession(sessionId, { recap, prefix: recap, turnsSinceRecap: 0, transcriptChars: jsonl.length, updatedAt });
+          return recap;
+        } catch {
+          // Keep the prior recap (or ai-title if none); reset the counter so we
+          // retry in N turns, not every turn (token guard).
+          const prefix = s.recap || extractSessionTitle(jsonl);
+          writeSession(sessionId, { ...s, prefix, turnsSinceRecap: 0, updatedAt });
+          return prefix;
+        }
+      }
+
+      // Not due: reuse the cached recap, bump the counter.
+      const prefix = s.recap || '';
+      writeSession(sessionId, { ...s, prefix, turnsSinceRecap: (s.turnsSinceRecap || 0) + 1, updatedAt });
+      return prefix;
+    },
+  };
+}
