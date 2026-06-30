@@ -7,7 +7,7 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [2.0.0] — 2026-06-29
 
 Cross-platform release with pluggable speech and summarization. Current
-pre-release: `2.0.0-rc.9`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.md).
+pre-release: `2.0.0-rc.10`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.md).
 
 ### Added
 
@@ -74,6 +74,9 @@ pre-release: `2.0.0-rc.9`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.md
   `workspace` / `tab` ids and, on summary events, `sessionTitle` (Claude's
   transcript auto-title), alongside `sessionId` / `pane`. Empty fields are
   dropped from each JSON line.
+- **statusLine segment shows global and per-pane state separately** — the icon
+  stays the effective state (global master AND this pane), now annotated with
+  the `G` (global) and `S` (this pane's preference) flags, e.g. `🔈 voice (G:on S:on)` / `🔇 voice (G:on S:off)`.
 
 ### Removed
 
@@ -96,4 +99,4 @@ Initial release.
   service; one-command install/uninstall.
 
 [1.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v1.0.0
-[2.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v2.0.0-rc.9
+[2.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v2.0.0-rc.10
