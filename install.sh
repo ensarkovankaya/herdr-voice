@@ -35,6 +35,7 @@ mkdir -p "$APP/src" "$APP/logs"
 cp -R "$ROOT/src/." "$APP/src/"
 mkdir -p "$APP/bin/lib"
 cp "$ROOT/bin/lib/service.sh" "$APP/bin/lib/service.sh"
+cp "$ROOT/package.json" "$APP/package.json"   # version source for `herdr-voice version`
 
 # 2) config + pick the daemon (role-specific)
 if [ "$MODE" = host ]; then

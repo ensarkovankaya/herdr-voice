@@ -5,6 +5,18 @@ CFG="$APP/config.json"
 LOG="$APP/logs/herdr-voice.log"
 LABEL="dev.herdr-voice"
 
+# `version` reports the package.json version and needs no config or daemon, so
+# it short-circuits before the config check below. Prefers the repo copy next to
+# this script (dev run), then the installed copy in ~/.herdr-voice (install.sh
+# deploys it). package.json stays the single source of truth.
+case "${1:-}" in
+  version|--version|-v)
+    for f in "$(dirname "$0")/../package.json" "$APP/package.json"; do
+      [ -f "$f" ] && { jq -r '.version // "unknown"' "$f"; exit 0; }
+    done
+    echo "unknown"; exit 0 ;;
+esac
+
 die(){ echo "herdr-voice: $*" >&2; exit 1; }
 [ -f "$CFG" ] || die "no config: $CFG (run install first)"
 role(){ jq -r '.role // "host"' "$CFG"; }
@@ -69,5 +81,5 @@ case "${1:-status}" in
     rm -rf "$APP"
     rm -f "$HOME/.local/bin/herdr-voice"
     echo "herdr-voice removed (role=$r)." ;;
-  *) die "usage: herdr-voice {start|stop|restart|status|logs|enable|disable|uninstall}" ;;
+  *) die "usage: herdr-voice {start|stop|restart|status|logs|enable|disable|version|uninstall}" ;;
 esac
