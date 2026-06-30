@@ -24,7 +24,7 @@ export function makeRouter({ getConfig, speak, forward, now = Date.now, log }) {
         .then(() => forward(ip, port, text, meta))
         .catch(() => { remote = null; log('WARN', 'fallback_local', { target, ...m }); speak(text); });
     } else {
-      const provider = cfg.tts?.provider || 'say';
+      const provider = cfg.tts?.providers?.[0] || cfg.tts?.provider || 'say';
       log('INFO', 'speak', { text: (text || '').slice(0, 120), mode: 'local', provider, voice: cfg.tts?.[provider]?.voice, ...m });
       speak(text);
     }

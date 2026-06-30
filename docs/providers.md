@@ -7,6 +7,23 @@ setup for each shipped provider and the contract for writing a new one.
 Select and configure providers in the `tts` block of `config.json`; see
 [configuration.md](configuration.md#tts--speech-engine).
 
+## Provider priority & fallback
+
+`tts.providers` is an ordered list, tried until one produces audio:
+
+```jsonc
+{ "tts": { "providers": ["gemini", "piper", "say"] } }
+```
+
+Each provider's `speak()` returns `{ ok, reason }`. On a synth/API failure
+(`no_key`, `http_429` quota, `no_audio`, `spawn_failed`, `exit_<n>`, …) the
+speaker logs `tts_fallback {provider, reason, next}` and moves to the next
+provider; the one that finally speaks after a fallback logs
+`tts_spoke {provider}`. If all fail it logs `tts_all_failed {providers}`. A
+*playback* (audio-device) error does not trigger fallback — the same player is
+shared by every provider. Omitting `providers` falls back to the single
+`provider` string (default `say`), so existing configs keep working.
+
 ## How playback works
 
 A provider is one of two kinds:
@@ -18,9 +35,10 @@ A provider is one of two kinds:
   way and respect `audio.player` (see
   [configuration.md](configuration.md#audio--player-selection)).
 
-Whichever kind, the speaker queue runs utterances one at a time and swallows
-provider errors, so a failure never breaks the daemon — it just goes silent for
-that utterance (and logs a `WARN`).
+Whichever kind, the speaker queue runs utterances one at a time. A provider
+failure never breaks the daemon: the speaker falls back to the next provider in
+`tts.providers` and only goes silent for that utterance if every provider
+fails (each step logs a `WARN`).
 
 ## `say` (macOS, default there)
 
@@ -83,11 +101,13 @@ Uses Google's [Gemini TTS](https://docs.cloud.google.com/text-to-speech/docs/gem
 `generateContent` endpoint. The API returns headerless PCM; herdr-voice wraps
 it in a WAV header and plays it.
 
-**1. Get a Google AI API key** and export it in the **daemon's** environment
-under the name you configure (`apiKeyEnv`, default `GEMINI_API_KEY`). The host
-installer injects this into the service unit when the variable is set at
-install time; otherwise set it in the plist/unit or export it before
-`herdr-voice start`.
+**1. Get a Google AI API key.** Provide it one of two ways: set `apiKey`
+inline in the config block (simplest, but the key then lives in
+`config.json`), or export it in the **daemon's** environment under the name
+you configure (`apiKeyEnv`, default `GEMINI_API_KEY`) — the host installer
+injects this into the service unit when the variable is set at install time;
+otherwise set it in the plist/unit or export it before `herdr-voice start`.
+`apiKey` wins when both are set.
 
 **2. Configure:**
 
@@ -98,7 +118,7 @@ install time; otherwise set it in the plist/unit or export it before
     "gemini": {
       "model": "gemini-2.5-flash-preview-tts",
       "voice": "Kore",
-      "apiKeyEnv": "GEMINI_API_KEY",
+      "apiKeyEnv": "GEMINI_API_KEY",  // or set "apiKey": "AIza…" inline instead
       "languageCode": ""
     }
   },

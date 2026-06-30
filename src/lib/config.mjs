@@ -29,8 +29,12 @@ export function configPath() {
 // Layer the user's tts settings over the defaults so every provider's block is
 // fully populated regardless of which provider is selected.
 function mergeTts(tts = {}) {
+  const provider = tts.provider || TTS_DEFAULTS.provider;
   return {
-    provider: tts.provider || TTS_DEFAULTS.provider,
+    provider,
+    // Fallback priority list; tried in order until one produces audio. Falls
+    // back to the single `provider` when not configured (backward compatible).
+    providers: (Array.isArray(tts.providers) && tts.providers.length) ? tts.providers : [provider],
     say: { ...TTS_DEFAULTS.say, ...(tts.say || {}) },
     piper: { ...TTS_DEFAULTS.piper, ...(tts.piper || {}) },
     gemini: { ...TTS_DEFAULTS.gemini, ...(tts.gemini || {}) },

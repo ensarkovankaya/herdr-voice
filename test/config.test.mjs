@@ -85,6 +85,14 @@ test('loadConfig: nested defaults present', () => withConfig({}, () => {
   assert.deepEqual(c.summarize.claude, {});
 }));
 
+test('loadConfig: tts.providers defaults to [provider] (backward compatible)', () => withConfig({ tts: { provider: 'piper' } }, () => {
+  assert.deepEqual(loadConfig().tts.providers, ['piper']);
+}));
+
+test('loadConfig: explicit tts.providers fallback order is preserved', () => withConfig({ tts: { providers: ['gemini', 'piper', 'say'] } }, () => {
+  assert.deepEqual(loadConfig().tts.providers, ['gemini', 'piper', 'say']);
+}));
+
 test('loadConfig: no tts block → say defaults (no v1 migration)', () => withConfig({ voice: 'Daniel' }, () => {
   const c = loadConfig();
   assert.equal(c.tts.provider, 'say');

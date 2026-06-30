@@ -9,9 +9,9 @@ export function makeSayProvider({ spawn = realSpawn } = {}) {
       return new Promise((resolve) => {
         let child;
         try { child = spawn('say', ['-v', cfg.tts.say.voice, text], { stdio: 'ignore' }); }
-        catch { return resolve(); }
-        child.on('error', () => resolve());
-        child.on('close', () => resolve());
+        catch { return resolve({ ok: false, reason: 'spawn_failed' }); }
+        child.on('error', () => resolve({ ok: false, reason: 'spawn_failed' }));
+        child.on('close', (code) => resolve(code === 0 ? { ok: true } : { ok: false, reason: 'exit_' + code }));
       });
     },
   };
