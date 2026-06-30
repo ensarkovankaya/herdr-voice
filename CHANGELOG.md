@@ -7,7 +7,7 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [2.0.0] — 2026-06-29
 
 Cross-platform release with pluggable speech and summarization. Current
-pre-release: `2.0.0-rc.8`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.md).
+pre-release: `2.0.0-rc.9`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.md).
 
 ### Added
 
@@ -49,6 +49,10 @@ pre-release: `2.0.0-rc.8`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.md
   (`enabled`/`everyTurns`/`maxLen`/`pruneAfterDays`/`prompt`) and the
   `recapTemplate` join string (`${recap}: ${body}`). See
   [docs/summarizer.md](docs/summarizer.md).
+- **`herdr-voice version`** — new CLI subcommand printing the package version
+  (also `--version` / `-v`); works without a config or a running daemon. The
+  installer now deploys `package.json` to `~/.herdr-voice/` as the version
+  source.
 
 ### Changed
 
@@ -92,4 +96,4 @@ Initial release.
   service; one-command install/uninstall.
 
 [1.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v1.0.0
-[2.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v2.0.0-rc.8
+[2.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v2.0.0-rc.9
