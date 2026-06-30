@@ -9,6 +9,8 @@ import { RECURSION_GUARD_ENV } from './lib/summarize/spawn.mjs';
 import { postJson } from './lib/http.mjs';
 import { voiceEnabledForPane } from './lib/pane.mjs';
 import { extractLastAssistantText, extractSessionTitle } from './lib/transcript.mjs';
+import { makeRecapper, formatPrefix } from './lib/summarize/recap.mjs';
+import { pruneOld } from './lib/session-store.mjs';
 export { extractLastAssistantText, extractSessionTitle };
 
 // The Stop hook can fire before Claude has finished flushing the final
@@ -62,9 +64,12 @@ async function main() {
     getCommand: () => makeCommandSummarizer(),
     getClaude: () => makeClaudeSummarizer(),
   });
-  const text = await summarize(extractLastAssistantText(jsonl), cfg);
+  const body = await summarize(extractLastAssistantText(jsonl), cfg);
   const sessionId = input.session_id || (input.transcript_path || '').split('/').pop().replace(/\.jsonl$/, '');
   const sessionTitle = extractSessionTitle(jsonl);
+  const prefix = await makeRecapper({}).resolvePrefix({ sessionId, jsonl, cfg });
+  const text = prefix ? formatPrefix(prefix, body, cfg) : body;
+  try { pruneOld(Date.now(), (cfg.summarize.recap || {}).pruneAfterDays || 30); } catch { /* swallow */ }
   try {
     await postJson(`http://${cfg.host}:${cfg.port}/speak`, {
       text, sessionId, sessionTitle,
