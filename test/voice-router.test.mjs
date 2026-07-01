@@ -251,6 +251,71 @@ test('POST /toggle turns voice OFF: persists, no confirmation spoken', async () 
   s.close();
 });
 
+test('GET /state reports audioMuted', async () => {
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf({ audioMuted: true }), speak: () => {}, forward: () => Promise.resolve(), now: () => 0, log: noLog }));
+  const r = await getJson(port, '/state');
+  assert.equal(r.json.audioMuted, true);
+  s.close();
+});
+
+test('audioMuted: records + SSE-broadcasts but does not speak or forward', async () => {
+  const spoken = []; const fwd = [];
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf({ audioMuted: true }),
+    speak: (t) => spoken.push(t),
+    forward: (...a) => { fwd.push(a); return Promise.resolve(); },
+    now: () => 0, log: noLog }));
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'silent' }, { token: 'T' });
+  await flush();
+  const r = await getJson(port, '/state');
+  assert.equal(spoken.length, 0);              // no local audio
+  assert.equal(fwd.length, 0);                 // no remote forward
+  assert.equal(r.json.messages.length, 1);     // still recorded
+  assert.equal(r.json.messages[0].text, 'silent');
+  assert.equal(r.json.messages[0].mode, 'muted');
+  s.close();
+});
+
+test('audioMuted still pushes the speak SSE frame (notifications survive)', async () => {
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf({ audioMuted: true }), speak: () => {}, forward: () => Promise.resolve(), now: () => 0, log: noLog }));
+  const got = sseWaitFor(port, 'speak');
+  await new Promise((r) => setTimeout(r, 50)); // let the SSE client connect
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'notif-only' }, { token: 'T' });
+  const entry = await got;
+  assert.equal(entry.text, 'notif-only');
+  s.close();
+});
+
+test('POST /audio flips audioMuted ON: persists, logs, returns audioMuted', async () => {
+  const setCalls = []; const logs = [];
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf({ audioMuted: false }),
+    speak: () => {}, forward: () => Promise.resolve(), now: () => 0,
+    log: (lvl, ev, f = {}) => logs.push({ ev, ...f }),
+    setAudioMuted: (v) => { setCalls.push(v); return v; } }));
+  const r = await postJson(`http://127.0.0.1:${port}/audio`, {}, { token: 'T' });
+  await flush();
+  assert.deepEqual(JSON.parse(r.body), { audioMuted: true });
+  assert.deepEqual(setCalls, [true]);
+  assert.ok(logs.find((l) => l.ev === 'audio' && l.audioMuted === true));
+  s.close();
+});
+
+test('POST /audio flips audioMuted OFF when already muted', async () => {
+  const setCalls = [];
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf({ audioMuted: true }),
+    speak: () => {}, forward: () => Promise.resolve(), now: () => 0, log: noLog,
+    setAudioMuted: (v) => { setCalls.push(v); return v; } }));
+  const r = await postJson(`http://127.0.0.1:${port}/audio`, {}, { token: 'T' });
+  await flush();
+  assert.deepEqual(JSON.parse(r.body), { audioMuted: false });
+  assert.deepEqual(setCalls, [false]);
+  s.close();
+});
+
 test('a route that throws returns 500 without hanging', async () => {
   const { s, port } = await start(makeRouter({
     getConfig: cfgOf({ enabled: false }), speak: () => {}, forward: () => Promise.resolve(), now: () => 0, log: noLog,

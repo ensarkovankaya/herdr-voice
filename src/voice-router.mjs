@@ -2,7 +2,7 @@ import http from 'node:http';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadConfig, setEnabled as setEnabledConfig } from './lib/config.mjs';
+import { loadConfig, setEnabled as setEnabledConfig, setAudioMuted as setAudioMutedConfig } from './lib/config.mjs';
 import { readJsonBody, sendJson, postJson } from './lib/http.mjs';
 import { makeSpeaker } from './lib/tts/index.mjs';
 import { makeLogger } from './lib/logger.mjs';
@@ -17,6 +17,7 @@ export function makeRouter({
   persist = () => {},
   initialHistory = [],
   setEnabled = setEnabledConfig,
+  setAudioMuted = setAudioMutedConfig,
   ringSize = 50, textCap = 500,
 }) {
   let remote = null; // {ip, port, expiresAt}
@@ -41,7 +42,12 @@ export function makeRouter({
     const fwdMeta = { sessionId: m.sessionId, sessionTitle: m.sessionTitle, workspace: m.workspace, tab: m.tab, pane: m.pane };
     const capped = (text || '').slice(0, textCap);
     let mode; let provider;
-    if (remote && now() < remote.expiresAt) {
+    if (cfg.audioMuted) {
+      // Audio muted: no local speech, no remote forward — but still record +
+      // broadcast so the menu-bar app shows the message and posts a notification.
+      mode = 'muted'; provider = null;
+      log('INFO', 'muted', { text: capped.slice(0, 120), ...m });
+    } else if (remote && now() < remote.expiresAt) {
       const { ip, port } = remote;
       mode = 'remote'; provider = null;
       const target = `${ip}:${port}`;
@@ -75,6 +81,7 @@ export function makeRouter({
     const live = remote && now() < remote.expiresAt;
     return {
       enabled: !!cfg.enabled,
+      audioMuted: !!cfg.audioMuted,
       sessionDefault: cfg.sessionDefault || 'on',
       muteFocusedPane: !!cfg.muteFocusedPane,
       language: cfg.language || 'en',
@@ -125,6 +132,13 @@ export function makeRouter({
         if (newEnabled) route(cfg.voiceOnText, cfg, { kind: 'summary' });
         return sendJson(res, 200, { enabled: newEnabled });
       }
+      if (req.url === '/audio') {
+        const newMuted = !cfg.audioMuted;
+        setAudioMuted(newMuted);
+        // Logged through the streaming logger → fans out as SSE `audio` (see STREAM_EVENTS).
+        log('INFO', 'audio', { audioMuted: newMuted, source: 'app' });
+        return sendJson(res, 200, { audioMuted: newMuted });
+      }
       return sendJson(res, 404, { error: 'not found' });
     } catch (e) {
       log('ERROR', 'handler_error', { url: req.url, error: e && e.message });
@@ -156,6 +170,7 @@ function main() {
     initialHistory,
     persist: (entry) => appendHistory(historyFile, entry),
     setEnabled: setEnabledConfig,
+    setAudioMuted: setAudioMutedConfig,
   });
   http.createServer(handler).listen(cfg0.port, bind, () => log('INFO', 'start', { service: 'voice-router', bind, port: cfg0.port }));
   process.on('SIGTERM', () => { log('INFO', 'stop', { service: 'voice-router' }); process.exit(0); });
