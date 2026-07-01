@@ -32,7 +32,12 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-# Ad-hoc sign so the bundle runs locally (Developer ID not required for personal use).
-codesign --force --sign - "$APP" >/dev/null 2>&1 || echo "warning: ad-hoc codesign failed — bundle is unsigned" >&2
+# Sign the bundle. Default is ad-hoc (`-`); set HERDR_SIGN_ID to a code-signing
+# identity name (e.g. a self-signed "herdr-voice-selfsign" or a Developer ID) for
+# a STABLE signature so notification permission survives rebuilds. A stable
+# identity requires an interactive keychain session (run this in your terminal
+# and approve any "codesign wants to use key" prompt with "Always Allow").
+SIGN_ID="${HERDR_SIGN_ID:--}"
+codesign --force --sign "$SIGN_ID" "$APP" >/dev/null 2>&1 || echo "warning: codesign failed (sign id: $SIGN_ID) — bundle may be unsigned" >&2
 
 echo "Built $APP"
