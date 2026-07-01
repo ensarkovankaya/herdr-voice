@@ -11,6 +11,7 @@ final class AppState {
     private(set) var messages: [Message] = []   // newest last (ring-buffer order)
     private(set) var connected = false
     var onChange: (() -> Void)?
+    var onMessage: ((Message) -> Void)?
 
     private let maxMessages = 50
 
@@ -36,6 +37,7 @@ final class AppState {
                 messages.append(msg)
                 if messages.count > maxMessages { messages.removeFirst(messages.count - maxMessages) }
                 onChange?()
+                onMessage?(msg)
             }
         case "toggle":
             if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],

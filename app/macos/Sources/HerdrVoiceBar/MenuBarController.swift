@@ -8,10 +8,16 @@ final class MenuBarController {
     private let statusItem: NSStatusItem
     private let state: AppState
     private let onToggle: () -> Void
+    private let settings: NotificationSettings
+    private let onSetMode: (NotificationMode) -> Void
 
-    init(state: AppState, onToggle: @escaping () -> Void) {
+    init(state: AppState, settings: NotificationSettings,
+         onToggle: @escaping () -> Void,
+         onSetMode: @escaping (NotificationMode) -> Void) {
         self.state = state
+        self.settings = settings
         self.onToggle = onToggle
+        self.onSetMode = onSetMode
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         rebuild()
     }
@@ -79,10 +85,30 @@ final class MenuBarController {
         }
 
         menu.addItem(.separator())
+        let notifItem = NSMenuItem(title: "Bildirimler", action: nil, keyEquivalent: "")
+        let notifMenu = NSMenu()
+        let current = settings.mode
+        let modes: [(NotificationMode, String)] = [(.all, "Tümü"), (.approvals, "Sadece onay"), (.off, "Kapalı")]
+        for (mode, label) in modes {
+            let item = NSMenuItem(title: label, action: #selector(setModeClicked(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = mode.rawValue
+            item.state = (mode == current) ? .on : .off
+            notifMenu.addItem(item)
+        }
+        notifItem.submenu = notifMenu
+        menu.addItem(notifItem)
+
+        menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Çıkış", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
         statusItem.menu = menu
     }
 
     @objc private func toggleClicked() { onToggle() }
+
+    @objc private func setModeClicked(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String, let mode = NotificationMode(rawValue: raw) else { return }
+        onSetMode(mode)
+    }
 }

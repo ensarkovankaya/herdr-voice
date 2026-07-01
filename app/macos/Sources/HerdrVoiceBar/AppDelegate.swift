@@ -8,13 +8,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var controller: MenuBarController!
     private var client: RouterClient!
     private var streamTask: Task<Void, Never>?
+    private let notifier = Notifier()
+    private let settings = NotificationSettings()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let config = (try? AppConfig.load()) ?? AppConfig(host: "127.0.0.1", port: 8973, token: "")
         state = AppState()
         client = RouterClient(config: config)
-        controller = MenuBarController(state: state) { [weak self] in self?.toggle() }
+        controller = MenuBarController(state: state, settings: settings,
+            onToggle: { [weak self] in self?.toggle() },
+            onSetMode: { [weak self] mode in
+                guard let self else { return }
+                var s = self.settings; s.mode = mode
+                self.controller.rebuild()
+            })
         state.onChange = { [weak self] in self?.controller.rebuild() }
+        notifier.activate()
+        state.onMessage = { [weak self] msg in
+            guard let self else { return }
+            if let plan = NotificationPolicy.make(for: msg, mode: self.settings.mode) {
+                self.notifier.post(plan)
+            }
+        }
 
         Task { await self.refreshState() }
         startStream()
