@@ -9,7 +9,7 @@ enum HerdrBridge {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/bin/sh")
         // Login shell so the user's PATH (herdr on it) is loaded.
-        p.arguments = ["-lc", "herdr agent focus \(shellQuote(pane))"]
+        p.arguments = ["-lc", "hb=\"$(command -v herdr || echo \"$HOME/.local/bin/herdr\")\"; \"$hb\" agent focus \(shellQuote(pane))"]
         do { try p.run() } catch { /* herdr unavailable — ignore */ }
     }
 

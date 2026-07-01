@@ -1,5 +1,4 @@
 // app/macos/Sources/HerdrVoiceBar/Notifier.swift
-import AppKit
 import UserNotifications
 import HerdrVoiceKit
 
