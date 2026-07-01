@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cueFor, cueText } from '../src/notify-cue.mjs';
+import { cueFor, cueText, cueKindOf } from '../src/notify-cue.mjs';
 
 test('idle_prompt → cueIdle; permission_prompt and other types → cue', () => {
   const cfg = { cue: 'Approval needed.', cueIdle: 'Waiting for you.' };
@@ -27,4 +27,12 @@ test('cueText: no cached prefix → bare cue', () => {
   const cfg = { cue: 'Approval needed.' };
   assert.equal(cueText({ session_id: 's' }, cfg, { readSession: () => ({}) }), 'Approval needed.');
   assert.equal(cueText({}, cfg, { readSession: () => ({ prefix: 'X' }) }), 'Approval needed.'); // no session_id
+});
+
+test('cueKindOf maps idle_prompt to idle, everything else to permission', () => {
+  assert.equal(cueKindOf({ notification_type: 'idle_prompt' }), 'idle');
+  assert.equal(cueKindOf({ type: 'idle_prompt' }), 'idle');
+  assert.equal(cueKindOf({ notification_type: 'permission_prompt' }), 'permission');
+  assert.equal(cueKindOf({}), 'permission');
+  assert.equal(cueKindOf(null), 'permission');
 });

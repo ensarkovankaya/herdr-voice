@@ -14,6 +14,12 @@ export function cueFor(input, cfg) {
   return cfg.cue;
 }
 
+// Cue subtype for the menu bar app: `idle_prompt` → 'idle', all others → 'permission'.
+export function cueKindOf(input) {
+  const kind = (input && (input.notification_type || input.type)) || '';
+  return kind === 'idle_prompt' ? 'idle' : 'permission';
+}
+
 // The spoken cue text: the fixed cue, prefixed with this session's cached
 // prefix when one exists. Reads only the cached session file — no LLM, no
 // transcript parse. readSession is injectable for testing.
@@ -47,6 +53,8 @@ async function main() {
   try {
     await postJson(`http://${cfg.host}:${cfg.port}/speak`, {
       text: cueText(input, cfg), sessionId,
+      sessionTitle: (readSession(sessionId).prefix) || '',
+      kind: 'cue', cueKind: cueKindOf(input),
       workspace: process.env.HERDR_WORKSPACE_ID || '',
       tab: process.env.HERDR_TAB_ID || '',
       pane: process.env.HERDR_PANE_ID || '',

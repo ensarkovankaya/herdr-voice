@@ -74,7 +74,7 @@ async function main() {
   try { pruneOld(Date.now(), (cfg.summarize.recap || {}).pruneAfterDays || 30); } catch { /* swallow */ }
   try {
     await postJson(`http://${cfg.host}:${cfg.port}/speak`, {
-      text, sessionId, sessionTitle,
+      text, sessionId, sessionTitle, kind: 'summary',
       workspace: process.env.HERDR_WORKSPACE_ID || '',
       tab: process.env.HERDR_TAB_ID || '',
       pane: process.env.HERDR_PANE_ID || '',
