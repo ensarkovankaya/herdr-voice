@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { stringsFor } from './strings.mjs';
@@ -59,4 +59,18 @@ export function loadConfig() {
   merged.voiceOffText = raw.voiceOffText ?? pack.voiceOff;
   merged.recapTemplate = raw.recapTemplate ?? pack.recapTemplate;
   return merged;
+}
+
+// Flip `enabled` on disk, preserving every other config key. Read-modify-write
+// with 2-space indent + trailing newline (matches the installer's format).
+export function setEnabled(enabled, {
+  path = configPath(),
+  read = (p) => readFileSync(p, 'utf8'),
+  write = (p, s) => writeFileSync(p, s),
+} = {}) {
+  let raw = {};
+  try { raw = JSON.parse(read(path)) || {}; } catch { /* start empty */ }
+  raw.enabled = !!enabled;
+  write(path, `${JSON.stringify(raw, null, 2)}\n`);
+  return raw.enabled;
 }

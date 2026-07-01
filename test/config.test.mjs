@@ -123,3 +123,31 @@ test('loadConfig: muteFocusedPane defaults to false and is overridable', () => {
   withConfig({}, () => assert.equal(loadConfig().muteFocusedPane, false));
   withConfig({ muteFocusedPane: true }, () => assert.equal(loadConfig().muteFocusedPane, true));
 });
+
+import { setEnabled } from '../src/lib/config.mjs';
+
+test('setEnabled flips enabled and preserves all other keys', () => {
+  let stored = JSON.stringify({ token: 'SECRET', enabled: true, language: 'tr' });
+  const out = setEnabled(false, {
+    path: '/ignored',
+    read: () => stored,
+    write: (_p, s) => { stored = s; },
+  });
+  assert.equal(out, false);
+  const parsed = JSON.parse(stored);
+  assert.equal(parsed.enabled, false);
+  assert.equal(parsed.token, 'SECRET');   // preserved
+  assert.equal(parsed.language, 'tr');     // preserved
+  assert.ok(stored.endsWith('\n'));        // trailing newline
+});
+
+test('setEnabled on a missing/corrupt file starts from {}', () => {
+  let stored = '';
+  const out = setEnabled(true, {
+    path: '/ignored',
+    read: () => { throw new Error('ENOENT'); },
+    write: (_p, s) => { stored = s; },
+  });
+  assert.equal(out, true);
+  assert.deepEqual(JSON.parse(stored), { enabled: true });
+});
