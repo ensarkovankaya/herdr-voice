@@ -61,8 +61,14 @@ final class MenuBarController {
         toggle.isEnabled = state.connected
         menu.addItem(toggle)
 
-        if state.remote.present {
-            let r = NSMenuItem(title: "Remote: \(state.remote.ip ?? "aktif")", action: nil, keyEquivalent: "")
+        let providerRow = NSMenuItem(
+            title: StatusSummary.providerLine(provider: state.tts.provider, providers: state.tts.providers),
+            action: nil, keyEquivalent: "")
+        providerRow.isEnabled = false
+        menu.addItem(providerRow)
+
+        if let remoteText = StatusSummary.remoteLine(state.remote) {
+            let r = NSMenuItem(title: remoteText, action: nil, keyEquivalent: "")
             r.isEnabled = false
             menu.addItem(r)
         }
