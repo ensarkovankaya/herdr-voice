@@ -6,7 +6,8 @@ import { loadConfig, setEnabled as setEnabledConfig } from './lib/config.mjs';
 import { readJsonBody, sendJson, postJson } from './lib/http.mjs';
 import { makeSpeaker } from './lib/tts/index.mjs';
 import { makeLogger } from './lib/logger.mjs';
-import { makeEventHub } from './lib/events.mjs';
+import { makeEventHub, makeStreamingLog, STREAM_EVENTS } from './lib/events.mjs';
+import { loadHistory, appendHistory } from './lib/history.mjs';
 
 // Build the host's HTTP request handler. Holds the currently-registered remote
 // sink (if any), a ring buffer of recent utterances, and an SSE event hub.
@@ -127,19 +128,30 @@ export function makeRouter({
   };
 }
 
-// Daemon entry: start the router HTTP server with a local speaker and a
-// forwarder that POSTs to the registered remote sink.
+// Daemon entry: start the router HTTP server with a local speaker, a forwarder
+// that POSTs to the registered remote sink, an SSE hub, and persisted history.
 function main() {
-  const logFile = join(homedir(), '.herdr-voice', 'logs', 'herdr-voice.log');
-  const log = makeLogger({ file: logFile });
+  const dir = join(homedir(), '.herdr-voice');
+  const logFile = join(dir, 'logs', 'herdr-voice.log');
+  const historyFile = join(dir, 'history.jsonl');
+  const hub = makeEventHub();
+  const log = makeStreamingLog(makeLogger({ file: logFile }), hub, STREAM_EVENTS);
   const bind = process.env.HERD_VOICE_BIND || '0.0.0.0';
   const cfg0 = loadConfig();
+  const initialHistory = loadHistory(historyFile, { max: 50 });
   const forward = (ip, port, text, meta = {}) => {
     const c = loadConfig();
     return postJson(`http://${ip}:${port}/speak`, { text, ...meta }, { token: c.token, timeoutMs: c.forwardTimeoutMs })
       .then((r) => { if (r.status >= 300) throw new Error(`sink ${r.status}`); });
   };
-  const handler = makeRouter({ getConfig: loadConfig, speak: makeSpeaker({ getConfig: loadConfig, log }), forward, now: Date.now, log });
+  const handler = makeRouter({
+    getConfig: loadConfig,
+    speak: makeSpeaker({ getConfig: loadConfig, log }),
+    forward, now: Date.now, log, hub,
+    initialHistory,
+    persist: (entry) => appendHistory(historyFile, entry),
+    setEnabled: setEnabledConfig,
+  });
   http.createServer(handler).listen(cfg0.port, bind, () => log('INFO', 'start', { service: 'voice-router', bind, port: cfg0.port }));
   process.on('SIGTERM', () => { log('INFO', 'stop', { service: 'voice-router' }); process.exit(0); });
 }
