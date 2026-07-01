@@ -79,7 +79,7 @@ export function makeRouter({
       language: cfg.language || 'en',
       remote: live ? { present: true, ip: remote.ip, port: remote.port, expiresAt: remote.expiresAt } : { present: false },
       tts: { provider: cfg.tts?.provider, providers: cfg.tts?.providers || [] },
-      messages,
+      messages: messages.slice(),
     };
   }
 
