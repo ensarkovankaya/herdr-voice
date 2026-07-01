@@ -38,6 +38,7 @@ public struct TtsState: Codable, Equatable, Sendable {
 
 public struct RouterState: Codable, Equatable, Sendable {
     public var enabled: Bool
+    public var audioMuted: Bool
     public var sessionDefault: String
     public var muteFocusedPane: Bool
     public var language: String
