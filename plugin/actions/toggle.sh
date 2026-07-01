@@ -43,13 +43,30 @@ if [ "$mode" = "pane" ]; then
     scope="global (no focused pane)"
   fi
 else
-  cur="$(global_enabled)"
+  # Global master switch is owned by the router (single source of truth):
+  # it flips config.enabled, logs the toggle, and speaks the confirmation.
+  TOKEN=$(jq -r '.token // ""' "$CFG"); HOST=$(jq -r '.host // "127.0.0.1"' "$CFG"); PORT=$(jq -r '.port // 8973' "$CFG")
   case "$mode" in
-    on)  new=true ;;
-    off) new=false ;;
-    *)   if [ "$cur" = true ]; then new=false; else new=true; fi ;;
+    on)  want='{"enabled":true}'  ;;
+    off) want='{"enabled":false}' ;;
+    *)   want='' ;;   # plain toggle: let the router flip current state
   esac
-  set_global "$new"; scope="global"
+  # POST /toggle flips (no body) and returns {"enabled":bool}. For explicit
+  # on/off we still call /toggle only when it would change state.
+  cur="$(global_enabled)"
+  if [ -n "$want" ]; then
+    new=$([ "$mode" = on ] && echo true || echo false)
+    [ "$cur" = "$new" ] || curl -fsS -m 2 -X POST "http://${HOST}:${PORT}/toggle" -H "x-voice-token: $TOKEN" >/dev/null 2>&1 || true
+  else
+    resp="$(curl -fsS -m 2 -X POST "http://${HOST}:${PORT}/toggle" -H "x-voice-token: $TOKEN" 2>/dev/null || true)"
+    new="$(printf '%s' "$resp" | jq -r '.enabled // empty' 2>/dev/null)"
+    [ -n "$new" ] || new=$([ "$cur" = true ] && echo false || echo true)
+  fi
+  scope="global"
+  # Terminal-title cosmetics stay local (router can't touch this terminal).
+  if [ "$new" = true ]; then printf '\033]0;🔈 herdr-voice on\007'; else printf '\033]0;herdr-voice off\007'; fi
+  echo "herdr-voice $scope enabled=$new"
+  exit 0
 fi
 
 if [ "$new" = true ]; then printf '\033]0;🔈 herdr-voice on\007'; msg=$(hv_str voiceOnText voiceOn); else printf '\033]0;herdr-voice off\007'; msg=$(hv_str voiceOffText voiceOff); fi
