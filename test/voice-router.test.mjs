@@ -220,3 +220,33 @@ test('GET /events pushes a speak frame when an utterance is routed', async () =>
   assert.equal(entry.cueKind, 'idle');
   s.close();
 });
+
+test('POST /toggle turns voice ON: persists, logs, speaks confirmation, returns enabled', async () => {
+  const spoken = []; const logs = []; const setCalls = [];
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf({ enabled: false, voiceOnText: 'Ses açıldı.' }),
+    speak: (t) => spoken.push(t), forward: () => Promise.resolve(), now: () => 0,
+    log: (lvl, ev, f = {}) => logs.push({ ev, ...f }),
+    setEnabled: (v) => { setCalls.push(v); return v; } }));
+  const r = await postJson(`http://127.0.0.1:${port}/toggle`, {}, { token: 'T' });
+  await flush();
+  assert.deepEqual(JSON.parse(r.body), { enabled: true });
+  assert.deepEqual(setCalls, [true]);
+  assert.ok(logs.find((l) => l.ev === 'toggle' && l.enabled === true));
+  assert.deepEqual(spoken, ['Ses açıldı.']);   // spoken when turning on
+  s.close();
+});
+
+test('POST /toggle turns voice OFF: persists, no confirmation spoken', async () => {
+  const spoken = []; const setCalls = [];
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf({ enabled: true, voiceOnText: 'Ses açıldı.' }),
+    speak: (t) => spoken.push(t), forward: () => Promise.resolve(), now: () => 0, log: noLog,
+    setEnabled: (v) => { setCalls.push(v); return v; } }));
+  const r = await postJson(`http://127.0.0.1:${port}/toggle`, {}, { token: 'T' });
+  await flush();
+  assert.deepEqual(JSON.parse(r.body), { enabled: false });
+  assert.deepEqual(setCalls, [false]);
+  assert.equal(spoken.length, 0);              // silent when turning off
+  s.close();
+});

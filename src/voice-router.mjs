@@ -117,8 +117,11 @@ export function makeRouter({
       return;
     }
     if (req.url === '/toggle') {
-      // Implemented in Task 6.
-      return sendJson(res, 404, { error: 'not found' });
+      const newEnabled = !cfg.enabled;
+      setEnabled(newEnabled);
+      log('INFO', 'toggle', { enabled: newEnabled, source: 'app' });
+      if (newEnabled) route(cfg.voiceOnText, cfg, { kind: 'summary' });
+      return sendJson(res, 200, { enabled: newEnabled });
     }
     return sendJson(res, 404, { error: 'not found' });
   };
