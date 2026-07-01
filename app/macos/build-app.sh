@@ -33,6 +33,6 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 PLIST
 
 # Ad-hoc sign so the bundle runs locally (Developer ID not required for personal use).
-codesign --force --sign - "$APP" >/dev/null 2>&1 || true
+codesign --force --sign - "$APP" >/dev/null 2>&1 || echo "warning: ad-hoc codesign failed — bundle is unsigned" >&2
 
 echo "Built $APP"
