@@ -41,4 +41,10 @@ actor RouterClient {
         let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         return obj?["enabled"] as? Bool ?? false
     }
+
+    func setAudio() async throws -> Bool {
+        let (data, _) = try await session.data(for: request("/audio", method: "POST"))
+        let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        return obj?["audioMuted"] as? Bool ?? false
+    }
 }

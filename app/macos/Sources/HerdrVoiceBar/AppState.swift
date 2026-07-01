@@ -7,6 +7,7 @@ import HerdrVoiceKit
 @MainActor
 final class AppState {
     private(set) var enabled = false
+    private(set) var audioMuted = false
     private(set) var remote = RemoteState(present: false, ip: nil, port: nil, expiresAt: nil)
     private(set) var messages: [Message] = []   // newest last (ring-buffer order)
     private(set) var connected = false
@@ -17,6 +18,7 @@ final class AppState {
 
     func apply(_ state: RouterState) {
         enabled = state.enabled
+        audioMuted = state.audioMuted
         remote = state.remote
         messages = state.messages
         onChange?()
@@ -43,6 +45,12 @@ final class AppState {
             if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let e = obj["enabled"] as? Bool {
                 enabled = e
+                onChange?()
+            }
+        case "audio":
+            if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let m = obj["audioMuted"] as? Bool {
+                audioMuted = m
                 onChange?()
             }
         case "register":
