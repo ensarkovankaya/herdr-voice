@@ -12,7 +12,10 @@ actor RouterClient {
     init(config: AppConfig) {
         self.config = config
         let cfg = URLSessionConfiguration.default
-        cfg.timeoutIntervalForRequest = 10
+        // SSE is long-lived: this "wait for data" timeout MUST exceed the router's
+        // keep-alive interval (~20s) or the idle stream is killed and reconnects in a
+        // loop, missing live events. 60s leaves comfortable margin over the ping.
+        cfg.timeoutIntervalForRequest = 60
         cfg.timeoutIntervalForResource = TimeInterval(Int.max) // SSE is long-lived
         self.session = URLSession(configuration: cfg)
     }
