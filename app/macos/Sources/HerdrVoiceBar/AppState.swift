@@ -19,17 +19,20 @@ final class AppState {
         enabled = state.enabled
         remote = state.remote
         messages = state.messages
+        DebugLog.log("apply /state msgs=\(state.messages.count)")
         onChange?()
     }
 
     func setConnected(_ value: Bool) {
         guard connected != value else { return }
         connected = value
+        DebugLog.log("connected=\(value)")
         onChange?()
     }
 
     // Apply one SSE event. Unknown events are ignored.
     func handle(_ event: SSEEvent) {
+        DebugLog.log("handle event=\(event.name)")
         guard let data = event.data.data(using: .utf8) else { return }
         switch event.name {
         case "speak":
@@ -37,7 +40,10 @@ final class AppState {
                 messages.append(msg)
                 if messages.count > maxMessages { messages.removeFirst(messages.count - maxMessages) }
                 onChange?()
+                DebugLog.log("speak: appended, onMessage set=\(onMessage != nil)")
                 onMessage?(msg)
+            } else {
+                DebugLog.log("speak: DECODE FAILED")
             }
         case "toggle":
             if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
