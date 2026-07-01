@@ -9,6 +9,7 @@ final class AppState {
     private(set) var enabled = false
     private(set) var audioMuted = false
     private(set) var remote = RemoteState(present: false, ip: nil, port: nil, expiresAt: nil)
+    private(set) var tts = TtsState(provider: nil, providers: [])
     private(set) var messages: [Message] = []   // newest last (ring-buffer order)
     private(set) var connected = false
     var onChange: (() -> Void)?
@@ -20,6 +21,7 @@ final class AppState {
         enabled = state.enabled
         audioMuted = state.audioMuted
         remote = state.remote
+        tts = state.tts
         messages = state.messages
         onChange?()
     }
