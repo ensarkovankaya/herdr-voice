@@ -1,6 +1,6 @@
 import Foundation
 
-public struct Message: Codable, Equatable, Identifiable {
+public struct Message: Codable, Equatable, Identifiable, Sendable {
     public var id: String
     public var ts: String
     public var text: String
@@ -15,7 +15,7 @@ public struct Message: Codable, Equatable, Identifiable {
     public var provider: String?
 }
 
-public struct RemoteState: Codable, Equatable {
+public struct RemoteState: Codable, Equatable, Sendable {
     public var present: Bool
     public var ip: String?
     public var port: Int?
@@ -25,12 +25,12 @@ public struct RemoteState: Codable, Equatable {
     }
 }
 
-public struct TtsState: Codable, Equatable {
+public struct TtsState: Codable, Equatable, Sendable {
     public var provider: String?
     public var providers: [String]
 }
 
-public struct RouterState: Codable, Equatable {
+public struct RouterState: Codable, Equatable, Sendable {
     public var enabled: Bool
     public var sessionDefault: String
     public var muteFocusedPane: Bool

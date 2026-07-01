@@ -1,6 +1,6 @@
 import Foundation
 
-public struct SSEEvent: Equatable {
+public struct SSEEvent: Equatable, Sendable {
     public let name: String
     public let data: String
     public init(name: String, data: String) { self.name = name; self.data = data }

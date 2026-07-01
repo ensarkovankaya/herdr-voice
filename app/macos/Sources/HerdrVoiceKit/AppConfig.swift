@@ -1,6 +1,6 @@
 import Foundation
 
-public struct AppConfig: Equatable {
+public struct AppConfig: Equatable, Sendable {
     public let host: String
     public let port: Int
     public let token: String
