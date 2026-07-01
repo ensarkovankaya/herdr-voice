@@ -41,35 +41,4 @@ actor RouterClient {
         let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         return obj?["enabled"] as? Bool ?? false
     }
-
-    func stream(
-        onConnected: @Sendable @escaping () -> Void,
-        onDisconnected: @Sendable @escaping () -> Void,
-        onEvent: @Sendable @escaping (SSEEvent) -> Void
-    ) async {
-        var backoff: UInt64 = 1_000_000_000 // 1s
-        while !Task.isCancelled {
-            do {
-                let (bytes, response) = try await session.bytes(for: request("/events", method: "GET"))
-                if let http = response as? HTTPURLResponse, http.statusCode != 200 {
-                    throw URLError(.badServerResponse)
-                }
-                onConnected()
-                backoff = 1_000_000_000
-                let parser = SSEParser()
-                for try await line in bytes.lines {
-                    if Task.isCancelled { break }
-                    // bytes.lines strips newlines; re-add the framing the parser expects.
-                    for event in parser.consume(line + "\n") { onEvent(event) }
-                    if line.isEmpty { _ = parser.consume("\n") } // blank line ends a frame
-                }
-                onDisconnected()
-            } catch {
-                onDisconnected()
-            }
-            if Task.isCancelled { break }
-            try? await Task.sleep(nanoseconds: backoff)
-            backoff = min(backoff * 2, 30_000_000_000) // cap 30s
-        }
-    }
 }

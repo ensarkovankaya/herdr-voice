@@ -7,7 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var state: AppState!
     private var controller: MenuBarController!
     private var client: RouterClient!
-    private var streamTask: Task<Void, Never>?
+    private var sse: SSEClient?
     private let notifier = Notifier()
     private let settings = NotificationSettings()
 
@@ -35,28 +35,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         Task { await self.refreshState() }
-        startStream()
+
+        sse = SSEClient(
+            config: config,
+            onConnected: { [weak self] in Task { @MainActor in guard let self else { return }; self.state.setConnected(true); await self.refreshState() } },
+            onDisconnected: { [weak self] in Task { @MainActor in self?.state.setConnected(false) } },
+            onEvent: { [weak self] event in Task { @MainActor in self?.state.handle(event) } }
+        )
+        sse?.start()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        streamTask?.cancel()
+        sse?.stop()
     }
 
     private func refreshState() async {
         if let s = try? await client.fetchState() {
             state.apply(s)
             state.setConnected(true)
-        }
-    }
-
-    private func startStream() {
-        streamTask = Task { [weak self] in
-            guard let self else { return }
-            await self.client.stream(
-                onConnected: { [weak self] in Task { @MainActor in guard let self else { return }; self.state.setConnected(true); await self.refreshState() } },
-                onDisconnected: { [weak self] in Task { @MainActor in self?.state.setConnected(false) } },
-                onEvent: { [weak self] event in Task { @MainActor in self?.state.handle(event) } }
-            )
         }
     }
 
