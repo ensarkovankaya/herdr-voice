@@ -250,3 +250,12 @@ test('POST /toggle turns voice OFF: persists, no confirmation spoken', async () 
   assert.equal(spoken.length, 0);              // silent when turning off
   s.close();
 });
+
+test('a route that throws returns 500 without hanging', async () => {
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf({ enabled: false }), speak: () => {}, forward: () => Promise.resolve(), now: () => 0, log: noLog,
+    setEnabled: () => { throw new Error('disk full'); } }));
+  const r = await postJson(`http://127.0.0.1:${port}/toggle`, {}, { token: 'T' });
+  assert.equal(r.status, 500);
+  s.close();
+});

@@ -95,36 +95,41 @@ export function makeRouter({
 
   return async (req, res) => {
     if (req.method === 'GET' && req.url === '/health') return sendJson(res, 200, { ok: true });
-    const cfg = getConfig();
-    if ((req.headers['x-voice-token'] || '') !== cfg.token) return sendJson(res, 401, { error: 'unauthorized' });
+    try {
+      const cfg = getConfig();
+      if ((req.headers['x-voice-token'] || '') !== cfg.token) return sendJson(res, 401, { error: 'unauthorized' });
 
-    if (req.method === 'GET' && req.url === '/state') return sendJson(res, 200, snapshot(cfg));
-    if (req.method === 'GET' && req.url === '/events') return openSse(req, res);
+      if (req.method === 'GET' && req.url === '/state') return sendJson(res, 200, snapshot(cfg));
+      if (req.method === 'GET' && req.url === '/events') return openSse(req, res);
 
-    if (req.method !== 'POST') return sendJson(res, 404, { error: 'not found' });
-    let body;
-    try { body = await readJsonBody(req); } catch { return sendJson(res, 400, { error: 'bad json' }); }
+      if (req.method !== 'POST') return sendJson(res, 404, { error: 'not found' });
+      let body;
+      try { body = await readJsonBody(req); } catch { return sendJson(res, 400, { error: 'bad json' }); }
 
-    if (req.url === '/register') {
-      if (!body.ip) return sendJson(res, 400, { error: 'ip required' });
-      remote = { ip: body.ip, port: body.port || 8973, expiresAt: now() + (body.ttlMs || cfg.remoteTtlMs) };
-      log('INFO', 'register', { ip: remote.ip, port: remote.port });
-      return sendJson(res, 200, { ok: true, remote: { ip: remote.ip, port: remote.port } });
+      if (req.url === '/register') {
+        if (!body.ip) return sendJson(res, 400, { error: 'ip required' });
+        remote = { ip: body.ip, port: body.port || 8973, expiresAt: now() + (body.ttlMs || cfg.remoteTtlMs) };
+        log('INFO', 'register', { ip: remote.ip, port: remote.port });
+        return sendJson(res, 200, { ok: true, remote: { ip: remote.ip, port: remote.port } });
+      }
+      if (req.url === '/deregister') { remote = null; log('INFO', 'deregister'); return sendJson(res, 200, { ok: true }); }
+      if (req.url === '/speak') {
+        sendJson(res, 202, { ok: true });
+        route(body.text, cfg, { sessionId: body.sessionId, sessionTitle: body.sessionTitle, workspace: body.workspace, tab: body.tab, pane: body.pane, kind: body.kind, cueKind: body.cueKind });
+        return;
+      }
+      if (req.url === '/toggle') {
+        const newEnabled = !cfg.enabled;
+        setEnabled(newEnabled);
+        log('INFO', 'toggle', { enabled: newEnabled, source: 'app' });
+        if (newEnabled) route(cfg.voiceOnText, cfg, { kind: 'summary' });
+        return sendJson(res, 200, { enabled: newEnabled });
+      }
+      return sendJson(res, 404, { error: 'not found' });
+    } catch (e) {
+      log('ERROR', 'handler_error', { url: req.url, error: e && e.message });
+      if (!res.headersSent) sendJson(res, 500, { error: 'internal' });
     }
-    if (req.url === '/deregister') { remote = null; log('INFO', 'deregister'); return sendJson(res, 200, { ok: true }); }
-    if (req.url === '/speak') {
-      sendJson(res, 202, { ok: true });
-      route(body.text, cfg, { sessionId: body.sessionId, sessionTitle: body.sessionTitle, workspace: body.workspace, tab: body.tab, pane: body.pane, kind: body.kind, cueKind: body.cueKind });
-      return;
-    }
-    if (req.url === '/toggle') {
-      const newEnabled = !cfg.enabled;
-      setEnabled(newEnabled);
-      log('INFO', 'toggle', { enabled: newEnabled, source: 'app' });
-      if (newEnabled) route(cfg.voiceOnText, cfg, { kind: 'summary' });
-      return sendJson(res, 200, { enabled: newEnabled });
-    }
-    return sendJson(res, 404, { error: 'not found' });
   };
 }
 
