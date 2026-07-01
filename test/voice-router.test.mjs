@@ -183,3 +183,40 @@ test('remote registration shows up in /state', async () => {
   assert.equal(r.json.remote.ip, '1.2.3.4');
   s.close();
 });
+
+// Open an SSE connection and resolve with the first `event: <name>` frame's data.
+function sseWaitFor(port, name, token = 'T') {
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      { hostname: '127.0.0.1', port, path: '/events', method: 'GET', headers: { 'x-voice-token': token } },
+      (res) => {
+        let buf = '';
+        res.on('data', (c) => {
+          buf += c;
+          let i;
+          while ((i = buf.indexOf('\n\n')) !== -1) {
+            const frame = buf.slice(0, i); buf = buf.slice(i + 2);
+            const ev = /^event: (.+)$/m.exec(frame);
+            const dat = /^data: (.+)$/m.exec(frame);
+            if (ev && ev[1] === name && dat) { req.destroy(); resolve(JSON.parse(dat[1])); }
+          }
+        });
+      },
+    );
+    req.on('error', (e) => { if (e.code !== 'ECONNRESET') reject(e); });
+    req.end();
+  });
+}
+
+test('GET /events pushes a speak frame when an utterance is routed', async () => {
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf(), speak: () => {}, forward: () => Promise.resolve(), now: () => 0, log: noLog }));
+  const got = sseWaitFor(port, 'speak');
+  await new Promise((r) => setTimeout(r, 50)); // let the SSE client connect
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'streamed', sessionId: 'sX', kind: 'cue', cueKind: 'idle' }, { token: 'T' });
+  const entry = await got;
+  assert.equal(entry.text, 'streamed');
+  assert.equal(entry.kind, 'cue');
+  assert.equal(entry.cueKind, 'idle');
+  s.close();
+});
