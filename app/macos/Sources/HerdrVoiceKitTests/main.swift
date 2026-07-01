@@ -6,6 +6,7 @@ let t = TestReporter()
 smokeTests(t)
 routerModelsTests(t)
 sseParserTests(t)
+appConfigTests(t)
 // --- end registrations ---
 
 if t.failures > 0 { print("\n\(t.failures) FAILED"); exit(1) } else { print("\nALL PASSED"); exit(0) }
