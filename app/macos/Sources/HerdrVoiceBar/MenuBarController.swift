@@ -12,18 +12,21 @@ final class MenuBarController {
     private let onSetMode: (NotificationMode) -> Void
     private let launchAtLoginEnabled: () -> Bool
     private let onToggleLaunchAtLogin: () -> Void
+    private let onToggleAudio: () -> Void
 
     init(state: AppState, settings: NotificationSettings,
          onToggle: @escaping () -> Void,
          onSetMode: @escaping (NotificationMode) -> Void,
          launchAtLoginEnabled: @escaping () -> Bool,
-         onToggleLaunchAtLogin: @escaping () -> Void) {
+         onToggleLaunchAtLogin: @escaping () -> Void,
+         onToggleAudio: @escaping () -> Void) {
         self.state = state
         self.settings = settings
         self.onToggle = onToggle
         self.onSetMode = onSetMode
         self.launchAtLoginEnabled = launchAtLoginEnabled
         self.onToggleLaunchAtLogin = onToggleLaunchAtLogin
+        self.onToggleAudio = onToggleAudio
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         rebuild()
     }
@@ -31,8 +34,9 @@ final class MenuBarController {
     private func icon() -> NSImage? {
         let name: String
         if !state.connected { name = "exclamationmark.triangle" }
-        else if state.enabled { name = "speaker.wave.2" }
-        else { name = "speaker.slash" }
+        else if !state.enabled { name = "speaker.slash" }
+        else if state.audioMuted { name = "bell" }   // active, notifications only
+        else { name = "speaker.wave.2" }
         let img = NSImage(systemSymbolName: name, accessibilityDescription: "herdr-voice")
         img?.isTemplate = true
         return img
@@ -42,13 +46,16 @@ final class MenuBarController {
         statusItem.button?.image = icon()
         let menu = NSMenu()
 
-        let statusLine = NSMenuItem(
-            title: state.connected ? (state.enabled ? "● Ses AÇIK" : "○ Ses KAPALI") : "⚠︎ Bağlantı yok",
-            action: nil, keyEquivalent: "")
+        let statusTitle: String
+        if !state.connected { statusTitle = "⚠︎ Bağlantı yok" }
+        else if !state.enabled { statusTitle = "○ Duraklatıldı" }
+        else if state.audioMuted { statusTitle = "🔔 Sadece bildirim" }
+        else { statusTitle = "● Aktif" }
+        let statusLine = NSMenuItem(title: statusTitle, action: nil, keyEquivalent: "")
         statusLine.isEnabled = false
         menu.addItem(statusLine)
 
-        let toggle = NSMenuItem(title: state.enabled ? "Sesi kapat" : "Sesi aç",
+        let toggle = NSMenuItem(title: state.enabled ? "Duraklat" : "Aktifleştir",
                                 action: #selector(toggleClicked), keyEquivalent: "")
         toggle.target = self
         toggle.isEnabled = state.connected
@@ -100,6 +107,11 @@ final class MenuBarController {
         launch.state = launchAtLoginEnabled() ? .on : .off
         settingsMenu.addItem(launch)
 
+        let audio = NSMenuItem(title: "Sesli oku", action: #selector(toggleAudioClicked), keyEquivalent: "")
+        audio.target = self
+        audio.state = state.audioMuted ? .off : .on   // "Sesli oku" ON = audio plays (not muted)
+        settingsMenu.addItem(audio)
+
         let notifItem = NSMenuItem(title: "Bildirimler", action: nil, keyEquivalent: "")
         let notifMenu = NSMenu()
         let current = settings.mode
@@ -126,6 +138,8 @@ final class MenuBarController {
     @objc private func toggleClicked() { onToggle() }
 
     @objc private func toggleLaunchClicked() { onToggleLaunchAtLogin() }
+
+    @objc private func toggleAudioClicked() { onToggleAudio() }
 
     @objc private func setModeClicked(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let mode = NotificationMode(rawValue: raw) else { return }

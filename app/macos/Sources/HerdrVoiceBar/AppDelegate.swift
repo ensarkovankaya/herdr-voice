@@ -35,7 +35,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     NSLog("herdr-voice: launch-at-login toggle failed: \(error)")
                 }
                 self.controller.rebuild()
-            })
+            },
+            onToggleAudio: { [weak self] in self?.setAudio() })
         state.onChange = { [weak self] in self?.controller.rebuild() }
         notifier.activate()
         state.onMessage = { [weak self] msg in
@@ -71,6 +72,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func toggle() {
         Task {
             _ = try? await client.toggle()
+            await refreshState()
+        }
+    }
+
+    private func setAudio() {
+        Task {
+            _ = try? await client.setAudio()
             await refreshState()
         }
     }
