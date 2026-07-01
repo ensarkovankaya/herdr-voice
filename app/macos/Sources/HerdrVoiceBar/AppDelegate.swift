@@ -35,9 +35,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         streamTask = Task { [weak self] in
             guard let self else { return }
             await self.client.stream(
-                onConnected: { Task { @MainActor in self.state.setConnected(true); await self.refreshState() } },
-                onDisconnected: { Task { @MainActor in self.state.setConnected(false) } },
-                onEvent: { event in Task { @MainActor in self.state.handle(event) } }
+                onConnected: { [weak self] in Task { @MainActor in guard let self else { return }; self.state.setConnected(true); await self.refreshState() } },
+                onDisconnected: { [weak self] in Task { @MainActor in self?.state.setConnected(false) } },
+                onEvent: { [weak self] event in Task { @MainActor in self?.state.handle(event) } }
             )
         }
     }
