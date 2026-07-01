@@ -13,6 +13,12 @@ public struct Message: Codable, Equatable, Identifiable, Sendable {
     public var pane: String
     public var mode: String
     public var provider: String?
+    public init(id: String, ts: String, text: String, kind: String, cueKind: String?, sessionId: String,
+                sessionTitle: String, workspace: String, tab: String, pane: String, mode: String, provider: String?) {
+        self.id = id; self.ts = ts; self.text = text; self.kind = kind; self.cueKind = cueKind
+        self.sessionId = sessionId; self.sessionTitle = sessionTitle; self.workspace = workspace
+        self.tab = tab; self.pane = pane; self.mode = mode; self.provider = provider
+    }
 }
 
 public struct RemoteState: Codable, Equatable, Sendable {
