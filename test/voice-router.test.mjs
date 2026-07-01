@@ -14,6 +14,17 @@ const flush = () => new Promise((r) => setImmediate(r));
 const noLog = () => {};
 const cfgOf = (over = {}) => () => ({ token: 'T', voice: 'Samantha', remoteTtlMs: 1000, ...over });
 
+// helper: GET JSON with the token header
+function getJson(port, path, token = 'T') {
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      { hostname: '127.0.0.1', port, path, method: 'GET', headers: { 'x-voice-token': token } },
+      (res) => { let b = ''; res.on('data', (c) => (b += c)); res.on('end', () => resolve({ status: res.statusCode, json: b ? JSON.parse(b) : null })); },
+    );
+    req.on('error', reject); req.end();
+  });
+}
+
 test('no remote → local speak', async () => {
   const spoken = [];
   const { s, port } = await start(makeRouter({
@@ -99,5 +110,76 @@ test('forward receives full session + herd meta', async () => {
   await postJson(`http://127.0.0.1:${port}/speak`, { text: 'x', sessionId: 's1', sessionTitle: 'My Title', workspace: 'ws1', tab: 't1', pane: 'p1' }, { token: 'T' });
   await flush();
   assert.deepEqual(gotMeta, { sessionId: 's1', sessionTitle: 'My Title', workspace: 'ws1', tab: 't1', pane: 'p1' });
+  s.close();
+});
+
+test('GET /state requires the token', async () => {
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf(), speak: () => {}, forward: () => Promise.resolve(), now: () => 0, log: noLog }));
+  const r = await getJson(port, '/state', 'WRONG');
+  assert.equal(r.status, 401);
+  s.close();
+});
+
+test('GET /state reports enabled, tts and recent messages', async () => {
+  const persisted = [];
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf({ enabled: true, sessionDefault: 'on', muteFocusedPane: true, language: 'tr',
+      tts: { provider: 'gemini', providers: ['gemini', 'piper'] } }),
+    speak: () => {}, forward: () => Promise.resolve(), now: () => 0, log: noLog,
+    persist: (e) => persisted.push(e) }));
+  await postJson(`http://127.0.0.1:${port}/speak`,
+    { text: 'done', sessionId: 's1', sessionTitle: 'My App', pane: 'p1', kind: 'summary' }, { token: 'T' });
+  await flush();
+  const r = await getJson(port, '/state');
+  assert.equal(r.status, 200);
+  assert.equal(r.json.enabled, true);
+  assert.equal(r.json.language, 'tr');
+  assert.deepEqual(r.json.tts, { provider: 'gemini', providers: ['gemini', 'piper'] });
+  assert.equal(r.json.messages.length, 1);
+  const m = r.json.messages[0];
+  assert.equal(m.text, 'done');
+  assert.equal(m.kind, 'summary');
+  assert.equal(m.cueKind, null);
+  assert.equal(m.sessionTitle, 'My App');
+  assert.equal(m.pane, 'p1');
+  assert.equal(m.mode, 'local');
+  assert.equal(m.provider, 'gemini');
+  assert.equal(persisted.length, 1);          // persist() called
+  s.close();
+});
+
+test('ring buffer caps at ringSize and keeps the newest; text is capped', async () => {
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf(), speak: () => {}, forward: () => Promise.resolve(), now: () => 0, log: noLog,
+    ringSize: 3, textCap: 5 }));
+  for (const t of ['a', 'b', 'c', 'd', 'toolongtext']) {
+    await postJson(`http://127.0.0.1:${port}/speak`, { text: t }, { token: 'T' });
+  }
+  await flush();
+  const r = await getJson(port, '/state');
+  assert.deepEqual(r.json.messages.map((m) => m.text), ['c', 'd', 'toolo']); // last 3, capped to 5
+  s.close();
+});
+
+test('cue kind flows into the recorded entry', async () => {
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf(), speak: () => {}, forward: () => Promise.resolve(), now: () => 0, log: noLog }));
+  await postJson(`http://127.0.0.1:${port}/speak`,
+    { text: 'approval needed', kind: 'cue', cueKind: 'permission', sessionId: 's2' }, { token: 'T' });
+  await flush();
+  const r = await getJson(port, '/state');
+  assert.equal(r.json.messages[0].kind, 'cue');
+  assert.equal(r.json.messages[0].cueKind, 'permission');
+  s.close();
+});
+
+test('remote registration shows up in /state', async () => {
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf(), speak: () => {}, forward: () => Promise.resolve(), now: () => 0, log: noLog }));
+  await postJson(`http://127.0.0.1:${port}/register`, { ip: '1.2.3.4', port: 8973 }, { token: 'T' });
+  const r = await getJson(port, '/state');
+  assert.equal(r.json.remote.present, true);
+  assert.equal(r.json.remote.ip, '1.2.3.4');
   s.close();
 });
