@@ -26,9 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         notifier.activate()
         state.onMessage = { [weak self] msg in
             guard let self else { return }
-            DebugLog.log("onMessage: kind=\(msg.kind) mode=\(self.settings.mode.rawValue)")
             let plan = NotificationPolicy.make(for: msg, mode: self.settings.mode)
-            DebugLog.log("onMessage: plan=\(plan == nil ? "NIL-skip" : "POST")")
             if let plan {
                 self.notifier.post(plan)
             }
