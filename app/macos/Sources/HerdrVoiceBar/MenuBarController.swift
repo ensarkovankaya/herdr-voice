@@ -10,14 +10,20 @@ final class MenuBarController {
     private let onToggle: () -> Void
     private let settings: NotificationSettings
     private let onSetMode: (NotificationMode) -> Void
+    private let launchAtLoginEnabled: () -> Bool
+    private let onToggleLaunchAtLogin: () -> Void
 
     init(state: AppState, settings: NotificationSettings,
          onToggle: @escaping () -> Void,
-         onSetMode: @escaping (NotificationMode) -> Void) {
+         onSetMode: @escaping (NotificationMode) -> Void,
+         launchAtLoginEnabled: @escaping () -> Bool,
+         onToggleLaunchAtLogin: @escaping () -> Void) {
         self.state = state
         self.settings = settings
         self.onToggle = onToggle
         self.onSetMode = onSetMode
+        self.launchAtLoginEnabled = launchAtLoginEnabled
+        self.onToggleLaunchAtLogin = onToggleLaunchAtLogin
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         rebuild()
     }
@@ -85,6 +91,15 @@ final class MenuBarController {
         }
 
         menu.addItem(.separator())
+        let settingsItem = NSMenuItem(title: "Ayarlar", action: nil, keyEquivalent: "")
+        let settingsMenu = NSMenu()
+
+        let launch = NSMenuItem(title: "Girişte Başlat",
+                                action: #selector(toggleLaunchClicked), keyEquivalent: "")
+        launch.target = self
+        launch.state = launchAtLoginEnabled() ? .on : .off
+        settingsMenu.addItem(launch)
+
         let notifItem = NSMenuItem(title: "Bildirimler", action: nil, keyEquivalent: "")
         let notifMenu = NSMenu()
         let current = settings.mode
@@ -97,7 +112,10 @@ final class MenuBarController {
             notifMenu.addItem(item)
         }
         notifItem.submenu = notifMenu
-        menu.addItem(notifItem)
+        settingsMenu.addItem(notifItem)
+
+        settingsItem.submenu = settingsMenu
+        menu.addItem(settingsItem)
 
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Çıkış", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
@@ -106,6 +124,8 @@ final class MenuBarController {
     }
 
     @objc private func toggleClicked() { onToggle() }
+
+    @objc private func toggleLaunchClicked() { onToggleLaunchAtLogin() }
 
     @objc private func setModeClicked(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let mode = NotificationMode(rawValue: raw) else { return }
