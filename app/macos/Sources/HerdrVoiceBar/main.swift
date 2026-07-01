@@ -1,3 +1,8 @@
-// Skeleton entry point. Full AppKit wiring replaces this file in Task 7.
-import HerdrVoiceKit
-_ = HerdrVoiceKit.name
+// app/macos/Sources/HerdrVoiceBar/main.swift
+import AppKit
+
+let app = NSApplication.shared
+app.setActivationPolicy(.accessory)   // menu bar agent, no dock icon
+let delegate = AppDelegate()
+app.delegate = delegate
+app.run()
