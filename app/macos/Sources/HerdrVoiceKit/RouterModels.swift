@@ -34,6 +34,9 @@ public struct RemoteState: Codable, Equatable, Sendable {
 public struct TtsState: Codable, Equatable, Sendable {
     public var provider: String?
     public var providers: [String]
+    public init(provider: String?, providers: [String]) {
+        self.provider = provider; self.providers = providers
+    }
 }
 
 public struct RouterState: Codable, Equatable, Sendable {
