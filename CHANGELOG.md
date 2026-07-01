@@ -4,10 +4,10 @@ All notable changes to herdr-voice are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project aims
 to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0] — 2026-06-29
+## [2.0.0] — 2026-07-01
 
-Cross-platform release with pluggable speech and summarization. Current
-pre-release: `2.0.0-rc.14`. See [docs/migration-v1-v2.md](docs/migration-v1-v2.md).
+Cross-platform release with pluggable speech and summarization. See
+[docs/migration-v1-v2.md](docs/migration-v1-v2.md).
 
 ### Added
 
