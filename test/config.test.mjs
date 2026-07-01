@@ -124,7 +124,12 @@ test('loadConfig: muteFocusedPane defaults to false and is overridable', () => {
   withConfig({ muteFocusedPane: true }, () => assert.equal(loadConfig().muteFocusedPane, true));
 });
 
-import { setEnabled } from '../src/lib/config.mjs';
+test('loadConfig: audioMuted defaults to false and is overridable', () => {
+  withConfig({}, () => assert.equal(loadConfig().audioMuted, false));
+  withConfig({ audioMuted: true }, () => assert.equal(loadConfig().audioMuted, true));
+});
+
+import { setEnabled, setAudioMuted } from '../src/lib/config.mjs';
 
 test('setEnabled flips enabled and preserves all other keys', () => {
   let stored = JSON.stringify({ token: 'SECRET', enabled: true, language: 'tr' });
@@ -150,4 +155,20 @@ test('setEnabled on a missing/corrupt file starts from {}', () => {
   });
   assert.equal(out, true);
   assert.deepEqual(JSON.parse(stored), { enabled: true });
+});
+
+test('setAudioMuted flips audioMuted and preserves all other keys', () => {
+  let stored = JSON.stringify({ token: 'SECRET', enabled: true, audioMuted: false, language: 'tr' });
+  const out = setAudioMuted(true, {
+    path: '/ignored',
+    read: () => stored,
+    write: (_p, s) => { stored = s; },
+  });
+  assert.equal(out, true);
+  const parsed = JSON.parse(stored);
+  assert.equal(parsed.audioMuted, true);
+  assert.equal(parsed.token, 'SECRET');   // preserved
+  assert.equal(parsed.enabled, true);      // preserved
+  assert.equal(parsed.language, 'tr');     // preserved
+  assert.ok(stored.endsWith('\n'));        // trailing newline
 });

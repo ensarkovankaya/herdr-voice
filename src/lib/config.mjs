@@ -5,7 +5,7 @@ import { stringsFor } from './strings.mjs';
 
 const DEFAULTS = {
   token: '', host: '127.0.0.1', port: 8973, language: 'en',
-  enabled: false, sessionDefault: 'on', muteFocusedPane: false, role: 'host', remoteHost: '',
+  enabled: false, sessionDefault: 'on', muteFocusedPane: false, audioMuted: false, role: 'host', remoteHost: '',
   remoteTtlMs: 3_600_000, forwardTimeoutMs: 1500, postTimeoutMs: 1500,
 };
 
@@ -73,4 +73,18 @@ export function setEnabled(enabled, {
   raw.enabled = !!enabled;
   write(path, `${JSON.stringify(raw, null, 2)}\n`);
   return raw.enabled;
+}
+
+// Flip `audioMuted` on disk, preserving every other config key. Read-modify-write
+// with 2-space indent + trailing newline (matches setEnabled / the installer format).
+export function setAudioMuted(muted, {
+  path = configPath(),
+  read = (p) => readFileSync(p, 'utf8'),
+  write = (p, s) => writeFileSync(p, s),
+} = {}) {
+  let raw = {};
+  try { raw = JSON.parse(read(path)) || {}; } catch { /* start empty */ }
+  raw.audioMuted = !!muted;
+  write(path, `${JSON.stringify(raw, null, 2)}\n`);
+  return raw.audioMuted;
 }
