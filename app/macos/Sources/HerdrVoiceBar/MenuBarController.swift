@@ -13,13 +13,23 @@ final class MenuBarController {
     private let launchAtLoginEnabled: () -> Bool
     private let onToggleLaunchAtLogin: () -> Void
     private let onToggleAudio: () -> Void
+    private let onReplay: (String) -> Void
+    private let onCopy: (String) -> Void
+    private let onOpenLogs: () -> Void
+    private let onOpenConfig: () -> Void
+    private let onRestartService: () -> Void
 
     init(state: AppState, settings: NotificationSettings,
          onToggle: @escaping () -> Void,
          onSetMode: @escaping (NotificationMode) -> Void,
          launchAtLoginEnabled: @escaping () -> Bool,
          onToggleLaunchAtLogin: @escaping () -> Void,
-         onToggleAudio: @escaping () -> Void) {
+         onToggleAudio: @escaping () -> Void,
+         onReplay: @escaping (String) -> Void,
+         onCopy: @escaping (String) -> Void,
+         onOpenLogs: @escaping () -> Void,
+         onOpenConfig: @escaping () -> Void,
+         onRestartService: @escaping () -> Void) {
         self.state = state
         self.settings = settings
         self.onToggle = onToggle
@@ -27,6 +37,11 @@ final class MenuBarController {
         self.launchAtLoginEnabled = launchAtLoginEnabled
         self.onToggleLaunchAtLogin = onToggleLaunchAtLogin
         self.onToggleAudio = onToggleAudio
+        self.onReplay = onReplay
+        self.onCopy = onCopy
+        self.onOpenLogs = onOpenLogs
+        self.onOpenConfig = onOpenConfig
+        self.onRestartService = onRestartService
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         rebuild()
     }
@@ -110,7 +125,16 @@ final class MenuBarController {
                 let when = RelativeTime.short(fromISO: msg.ts, now: now)
                 let line = "  \(bullet) \(msg.text.prefix(60))\(when.isEmpty ? "" : "  · \(when)")"
                 let item = NSMenuItem(title: line, action: nil, keyEquivalent: "")
-                item.isEnabled = false
+                let actions = NSMenu()
+                let replay = NSMenuItem(title: "Yeniden seslendir", action: #selector(replayClicked(_:)), keyEquivalent: "")
+                replay.target = self
+                replay.representedObject = msg.id
+                actions.addItem(replay)
+                let copy = NSMenuItem(title: "Kopyala", action: #selector(copyClicked(_:)), keyEquivalent: "")
+                copy.target = self
+                copy.representedObject = msg.text
+                actions.addItem(copy)
+                item.submenu = actions
                 menu.addItem(item)
             }
         }
@@ -144,6 +168,17 @@ final class MenuBarController {
         notifItem.submenu = notifMenu
         settingsMenu.addItem(notifItem)
 
+        settingsMenu.addItem(.separator())
+        let openLogs = NSMenuItem(title: "Logları Aç", action: #selector(openLogsClicked), keyEquivalent: "")
+        openLogs.target = self
+        settingsMenu.addItem(openLogs)
+        let openConfig = NSMenuItem(title: "Config Dosyasını Aç", action: #selector(openConfigClicked), keyEquivalent: "")
+        openConfig.target = self
+        settingsMenu.addItem(openConfig)
+        let restart = NSMenuItem(title: "Servisi Yeniden Başlat", action: #selector(restartServiceClicked), keyEquivalent: "")
+        restart.target = self
+        settingsMenu.addItem(restart)
+
         settingsItem.submenu = settingsMenu
         menu.addItem(settingsItem)
 
@@ -163,4 +198,18 @@ final class MenuBarController {
         guard let raw = sender.representedObject as? String, let mode = NotificationMode(rawValue: raw) else { return }
         onSetMode(mode)
     }
+
+    @objc private func replayClicked(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String else { return }
+        onReplay(id)
+    }
+
+    @objc private func copyClicked(_ sender: NSMenuItem) {
+        guard let text = sender.representedObject as? String else { return }
+        onCopy(text)
+    }
+
+    @objc private func openLogsClicked() { onOpenLogs() }
+    @objc private func openConfigClicked() { onOpenConfig() }
+    @objc private func restartServiceClicked() { onRestartService() }
 }

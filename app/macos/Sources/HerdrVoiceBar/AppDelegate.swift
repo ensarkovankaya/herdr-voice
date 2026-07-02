@@ -36,7 +36,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 self.controller.rebuild()
             },
-            onToggleAudio: { [weak self] in self?.setAudio() })
+            onToggleAudio: { [weak self] in self?.setAudio() },
+            onReplay: { [weak self] id in Task { try? await self?.client.replay(id: id) } },
+            onCopy: { text in
+                let pb = NSPasteboard.general
+                pb.clearContents()
+                pb.setString(text, forType: .string)
+            },
+            onOpenLogs: {
+                NSWorkspace.shared.open(URL(fileURLWithPath: NSHomeDirectory() + "/.herdr-voice/logs/herdr-voice.log"))
+            },
+            onOpenConfig: {
+                NSWorkspace.shared.open(URL(fileURLWithPath: NSHomeDirectory() + "/.herdr-voice/config.json"))
+            },
+            onRestartService: {
+                // Router runs as LaunchAgent dev.herdr-voice; kickstart -k restarts it.
+                // Fixed argv (no shell) — nothing user-controlled is interpolated.
+                let p = Process()
+                p.executableURL = URL(fileURLWithPath: "/bin/launchctl")
+                p.arguments = ["kickstart", "-k", "gui/\(getuid())/dev.herdr-voice"]
+                do { try p.run() } catch { NSLog("herdr-voice: service restart failed: \(error)") }
+            })
         state.onChange = { [weak self] in self?.controller.rebuild() }
         notifier.activate()
         state.onMessage = { [weak self] msg in

@@ -47,4 +47,11 @@ actor RouterClient {
         let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         return obj?["audioMuted"] as? Bool ?? false
     }
+
+    func replay(id: String) async throws {
+        var req = request("/replay", method: "POST")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONSerialization.data(withJSONObject: ["id": id])
+        _ = try await session.data(for: req)
+    }
 }
