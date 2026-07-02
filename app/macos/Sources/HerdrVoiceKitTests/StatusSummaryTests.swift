@@ -4,16 +4,6 @@ import HerdrVoiceKit
 func statusSummaryTests(_ t: TestReporter) {
     t.section("StatusSummary")
 
-    // providerLine: full priority chain from providers (active engine first).
-    t.eq(StatusSummary.providerLine(providers: ["gemini", "piper", "say"]),
-         "Ses motoru: gemini → piper → say", "full chain in priority order")
-    t.eq(StatusSummary.providerLine(providers: ["say"]),
-         "Ses motoru: say", "single provider")
-    t.eq(StatusSummary.providerLine(providers: ["", "gemini", ""]),
-         "Ses motoru: gemini", "skips empty entries")
-    t.eq(StatusSummary.providerLine(providers: []),
-         "Ses motoru: say", "defaults to say when empty")
-
     // remoteLine: absent -> nil.
     t.check(StatusSummary.remoteLine(RemoteState(present: false, ip: nil, port: nil, expiresAt: nil)) == nil,
             "no remote -> nil")
@@ -24,9 +14,6 @@ func statusSummaryTests(_ t: TestReporter) {
     t.eq(StatusSummary.remoteLine(RemoteState(present: true, ip: nil, port: nil, expiresAt: nil)) ?? "",
          "Remote: aktif", "present without ip")
 
-    // summarizeLine: shows the mode; empty mode reads as heuristic.
-    t.eq(StatusSummary.summarizeLine(mode: "claude"), "Özet: claude", "summarize line with mode")
-    t.eq(StatusSummary.summarizeLine(mode: ""), "Özet: heuristic", "summarize line empty mode")
     t.eq(StatusSummary.summarizeAuthWarning, "⚠︎ Claude oturumu kapalı — /login gerekli", "auth warning string")
 
     // paneLabel: prefers sessionTitle, falls back to pane id when title empty.

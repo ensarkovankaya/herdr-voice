@@ -71,12 +71,17 @@ final class MenuBarController {
         statusItem.button?.image = icon()
         let menu = NSMenu()
 
-        let statusTitle: String
-        if !state.connected { statusTitle = "⚠︎ Bağlantı yok" }
-        else if !state.enabled { statusTitle = "○ Duraklatıldı" }
-        else if state.audioMuted { statusTitle = "🔔 Sadece bildirim" }
-        else { statusTitle = "● Aktif" }
-        let statusLine = NSMenuItem(title: statusTitle, action: nil, keyEquivalent: "")
+        let headline = StatusSummary.statusHeadline(
+            connected: state.connected, enabled: state.enabled, audioMuted: state.audioMuted)
+        let statusColor: NSColor =
+            !state.connected ? .systemRed :
+            !state.enabled ? .systemGray :
+            state.audioMuted ? .systemOrange : .systemGreen
+        let statusLine = NSMenuItem(title: headline, action: nil, keyEquivalent: "")
+        statusLine.attributedTitle = MenuStyle.twoLine(
+            headline,
+            StatusSummary.statusDetail(providers: state.tts.providers, summarizeMode: state.summarize.mode))
+        statusLine.image = MenuStyle.dot(statusColor)
         statusLine.isEnabled = false
         menu.addItem(statusLine)
 
@@ -84,19 +89,8 @@ final class MenuBarController {
                                 action: #selector(toggleClicked), keyEquivalent: "")
         toggle.target = self
         toggle.isEnabled = state.connected
+        toggle.image = MenuStyle.symbol(state.enabled ? "pause.fill" : "play.fill")
         menu.addItem(toggle)
-
-        let providerRow = NSMenuItem(
-            title: StatusSummary.providerLine(providers: state.tts.providers),
-            action: nil, keyEquivalent: "")
-        providerRow.isEnabled = false
-        menu.addItem(providerRow)
-
-        let summarizeRow = NSMenuItem(
-            title: StatusSummary.summarizeLine(mode: state.summarize.mode),
-            action: nil, keyEquivalent: "")
-        summarizeRow.isEnabled = false
-        menu.addItem(summarizeRow)
 
         if state.summarize.mode == "claude" && state.summarize.authBroken {
             let warn = NSMenuItem(title: StatusSummary.summarizeAuthWarning, action: nil, keyEquivalent: "")
@@ -106,35 +100,31 @@ final class MenuBarController {
 
         if let remoteText = StatusSummary.remoteLine(state.remote) {
             let r = NSMenuItem(title: remoteText, action: nil, keyEquivalent: "")
+            r.attributedTitle = MenuStyle.secondary(remoteText)
+            r.image = MenuStyle.symbol("antenna.radiowaves.left.and.right")
             r.isEnabled = false
             menu.addItem(r)
         }
 
         menu.addItem(.separator())
-        let header = NSMenuItem(title: "Son mesajlar", action: nil, keyEquivalent: "")
-        header.isEnabled = false
-        menu.addItem(header)
+        menu.addItem(MenuStyle.sectionHeader("Son Mesajlar"))
 
         let now = Date()
         let recent = Array(state.messages.suffix(15).reversed())
         if recent.isEmpty {
-            let empty = NSMenuItem(title: "  (henüz yok)", action: nil, keyEquivalent: "")
+            let empty = NSMenuItem(title: "Henüz mesaj yok", action: nil, keyEquivalent: "")
+            empty.attributedTitle = MenuStyle.secondary("Henüz mesaj yok")
             empty.isEnabled = false
             menu.addItem(empty)
         } else {
-            var lastSession = "\u{0}"
             for msg in recent {
-                let session = msg.sessionTitle.isEmpty ? (msg.sessionId.isEmpty ? "?" : msg.sessionId) : msg.sessionTitle
-                if session != lastSession {
-                    let s = NSMenuItem(title: session, action: nil, keyEquivalent: "")
-                    s.isEnabled = false
-                    menu.addItem(s)
-                    lastSession = session
-                }
-                let bullet = msg.kind == "cue" ? "🟠" : "🟢"
                 let when = RelativeTime.short(fromISO: msg.ts, now: now)
-                let line = "  \(bullet) \(msg.text.prefix(60))\(when.isEmpty ? "" : "  · \(when)")"
-                let item = NSMenuItem(title: line, action: nil, keyEquivalent: "")
+                let subtitle = StatusSummary.messageSubtitle(
+                    sessionTitle: msg.sessionTitle, sessionId: msg.sessionId, relative: when)
+                let text = String(msg.text.prefix(60))
+                let item = NSMenuItem(title: text, action: nil, keyEquivalent: "")
+                item.attributedTitle = MenuStyle.twoLine(text, subtitle)
+                item.image = MenuStyle.dot(msg.kind == "cue" ? .systemOrange : .systemGreen, diameter: 7)
                 let actions = NSMenu()
                 let replay = NSMenuItem(title: "Yeniden seslendir", action: #selector(replayClicked(_:)), keyEquivalent: "")
                 replay.target = self
@@ -151,6 +141,7 @@ final class MenuBarController {
 
         if !state.panes.isEmpty {
             let panesItem = NSMenuItem(title: "Pane sesleri", action: nil, keyEquivalent: "")
+            panesItem.image = MenuStyle.symbol("terminal")
             let panesMenu = NSMenu()
             for p in state.panes {
                 let paneItem = NSMenuItem(title: StatusSummary.paneLabel(p), action: nil, keyEquivalent: "")
@@ -172,20 +163,24 @@ final class MenuBarController {
 
         menu.addItem(.separator())
         let settingsItem = NSMenuItem(title: "Ayarlar", action: nil, keyEquivalent: "")
+        settingsItem.image = MenuStyle.symbol("gearshape")
         let settingsMenu = NSMenu()
 
         let launch = NSMenuItem(title: "Girişte Başlat",
                                 action: #selector(toggleLaunchClicked), keyEquivalent: "")
         launch.target = self
         launch.state = launchAtLoginEnabled() ? .on : .off
+        launch.image = MenuStyle.symbol("power")
         settingsMenu.addItem(launch)
 
         let audio = NSMenuItem(title: "Sesli oku", action: #selector(toggleAudioClicked), keyEquivalent: "")
         audio.target = self
         audio.state = state.audioMuted ? .off : .on   // "Sesli oku" ON = audio plays (not muted)
+        audio.image = MenuStyle.symbol("speaker.wave.2")
         settingsMenu.addItem(audio)
 
         let notifItem = NSMenuItem(title: "Bildirimler", action: nil, keyEquivalent: "")
+        notifItem.image = MenuStyle.symbol("bell")
         let notifMenu = NSMenu()
         let current = settings.mode
         let modes: [(NotificationMode, String)] = [(.all, "Tümü"), (.approvals, "Sadece onay"), (.off, "Kapalı")]
@@ -202,12 +197,15 @@ final class MenuBarController {
         settingsMenu.addItem(.separator())
         let openLogs = NSMenuItem(title: "Logları Aç", action: #selector(openLogsClicked), keyEquivalent: "")
         openLogs.target = self
+        openLogs.image = MenuStyle.symbol("doc.plaintext")
         settingsMenu.addItem(openLogs)
         let openConfig = NSMenuItem(title: "Config Dosyasını Aç", action: #selector(openConfigClicked), keyEquivalent: "")
         openConfig.target = self
+        openConfig.image = MenuStyle.symbol("doc.badge.gearshape")
         settingsMenu.addItem(openConfig)
         let restart = NSMenuItem(title: "Servisi Yeniden Başlat", action: #selector(restartServiceClicked), keyEquivalent: "")
         restart.target = self
+        restart.image = MenuStyle.symbol("arrow.clockwise")
         settingsMenu.addItem(restart)
 
         settingsItem.submenu = settingsMenu
