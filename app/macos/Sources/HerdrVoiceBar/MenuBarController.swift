@@ -2,6 +2,13 @@
 import AppKit
 import HerdrVoiceKit
 
+// Boxes a pane + chosen override for NSMenuItem.representedObject.
+private final class PaneChoice: NSObject {
+    let pane: String
+    let overrideValue: String?
+    init(pane: String, overrideValue: String?) { self.pane = pane; self.overrideValue = overrideValue }
+}
+
 // Owns the NSStatusItem and rebuilds its NSMenu from AppState on every change.
 @MainActor
 final class MenuBarController {
@@ -18,6 +25,7 @@ final class MenuBarController {
     private let onOpenLogs: () -> Void
     private let onOpenConfig: () -> Void
     private let onRestartService: () -> Void
+    private let onSetPaneOverride: (String, String?) -> Void
 
     init(state: AppState, settings: NotificationSettings,
          onToggle: @escaping () -> Void,
@@ -29,7 +37,8 @@ final class MenuBarController {
          onCopy: @escaping (String) -> Void,
          onOpenLogs: @escaping () -> Void,
          onOpenConfig: @escaping () -> Void,
-         onRestartService: @escaping () -> Void) {
+         onRestartService: @escaping () -> Void,
+         onSetPaneOverride: @escaping (String, String?) -> Void) {
         self.state = state
         self.settings = settings
         self.onToggle = onToggle
@@ -42,6 +51,7 @@ final class MenuBarController {
         self.onOpenLogs = onOpenLogs
         self.onOpenConfig = onOpenConfig
         self.onRestartService = onRestartService
+        self.onSetPaneOverride = onSetPaneOverride
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         rebuild()
     }
@@ -139,6 +149,27 @@ final class MenuBarController {
             }
         }
 
+        if !state.panes.isEmpty {
+            let panesItem = NSMenuItem(title: "Pane sesleri", action: nil, keyEquivalent: "")
+            let panesMenu = NSMenu()
+            for p in state.panes {
+                let paneItem = NSMenuItem(title: StatusSummary.paneLabel(p), action: nil, keyEquivalent: "")
+                let sub = NSMenu()
+                let choices: [(String?, String)] = [(nil, "Varsayılan"), ("on", "Açık"), ("off", "Kapalı")]
+                for (value, title) in choices {
+                    let o = NSMenuItem(title: title, action: #selector(paneOverrideClicked(_:)), keyEquivalent: "")
+                    o.target = self
+                    o.representedObject = PaneChoice(pane: p.pane, overrideValue: value)
+                    o.state = (p.override == value) ? .on : .off
+                    sub.addItem(o)
+                }
+                paneItem.submenu = sub
+                panesMenu.addItem(paneItem)
+            }
+            panesItem.submenu = panesMenu
+            menu.addItem(panesItem)
+        }
+
         menu.addItem(.separator())
         let settingsItem = NSMenuItem(title: "Ayarlar", action: nil, keyEquivalent: "")
         let settingsMenu = NSMenu()
@@ -212,4 +243,9 @@ final class MenuBarController {
     @objc private func openLogsClicked() { onOpenLogs() }
     @objc private func openConfigClicked() { onOpenConfig() }
     @objc private func restartServiceClicked() { onRestartService() }
+
+    @objc private func paneOverrideClicked(_ sender: NSMenuItem) {
+        guard let c = sender.representedObject as? PaneChoice else { return }
+        onSetPaneOverride(c.pane, c.overrideValue)
+    }
 }

@@ -56,6 +56,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 p.executableURL = URL(fileURLWithPath: "/bin/launchctl")
                 p.arguments = ["kickstart", "-k", "gui/\(getuid())/dev.herdr-voice"]
                 do { try p.run() } catch { NSLog("herdr-voice: service restart failed: \(error)") }
+            },
+            onSetPaneOverride: { [weak self] pane, ov in
+                Task {
+                    guard let self else { return }
+                    _ = try? await self.client.setPaneOverride(pane: pane, override: ov)
+                    await self.refreshState()
+                }
             })
         state.onChange = { [weak self] in self?.controller.rebuild() }
         notifier.activate()

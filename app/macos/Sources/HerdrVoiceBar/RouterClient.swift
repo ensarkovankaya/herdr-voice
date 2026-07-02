@@ -54,4 +54,13 @@ actor RouterClient {
         req.httpBody = try JSONSerialization.data(withJSONObject: ["id": id])
         _ = try await session.data(for: req)
     }
+
+    func setPaneOverride(pane: String, override: String?) async throws {
+        var req = request("/pane", method: "POST")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        var body: [String: Any] = ["pane": pane]
+        if let override { body["override"] = override }
+        req.httpBody = try JSONSerialization.data(withJSONObject: body)
+        _ = try await session.data(for: req)
+    }
 }

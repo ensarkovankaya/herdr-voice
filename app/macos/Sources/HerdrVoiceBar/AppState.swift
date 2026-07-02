@@ -11,6 +11,7 @@ final class AppState {
     private(set) var remote = RemoteState(present: false, ip: nil, port: nil, expiresAt: nil)
     private(set) var tts = TtsState(providers: [])
     private(set) var summarize = SummarizeState(mode: "", authBroken: false)
+    private(set) var panes: [PaneState] = []
     private(set) var messages: [Message] = []   // newest last (ring-buffer order)
     private(set) var connected = false
     var onChange: (() -> Void)?
@@ -25,6 +26,7 @@ final class AppState {
         remote = state.remote
         tts = state.tts
         updateSummarize(state.summarize)
+        panes = state.panes
         messages = state.messages
         onChange?()
     }
@@ -71,6 +73,15 @@ final class AppState {
                let b = obj["broken"] as? Bool {
                 updateSummarize(SummarizeState(mode: summarize.mode, authBroken: b))
                 onChange?()
+            }
+        case "pane_override":
+            if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let pane = obj["pane"] as? String {
+                let ov = obj["override"] as? String
+                if let i = panes.firstIndex(where: { $0.pane == pane }) {
+                    panes[i].override = ov
+                    onChange?()
+                }
             }
         case "register":
             if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
