@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync, unlinkSync, mkdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -10,7 +10,7 @@ export function paneKey(paneId) {
   return (paneId || '').replace(/[^A-Za-z0-9]/g, '_');
 }
 
-function panesDir() {
+export function panesDir() {
   return join(homedir(), '.herdr-voice', 'panes');
 }
 
@@ -21,6 +21,34 @@ export function readPaneOverride(paneId, dir = panesDir()) {
     const v = readFileSync(join(dir, paneKey(paneId)), 'utf8').trim();
     return v === 'on' ? 'on' : v === 'off' ? 'off' : null;
   } catch { return null; }
+}
+
+// Every valid override file under `dir`, keyed by the sanitized pane key.
+// Unreadable/garbage files and a missing dir are treated as "no override".
+export function listPaneOverrides(dir = panesDir()) {
+  const map = {};
+  let names = [];
+  try { names = readdirSync(dir); } catch { return map; }
+  for (const name of names) {
+    try {
+      const v = readFileSync(join(dir, name), 'utf8').trim();
+      if (v === 'on' || v === 'off') map[name] = v;
+    } catch { /* skip unreadable entries */ }
+  }
+  return map;
+}
+
+// Set or clear a per-pane override: 'on'/'off' writes the file, anything else
+// removes it so the pane inherits the global behaviour again.
+export function writePaneOverride(paneId, override, dir = panesDir()) {
+  if (!paneId) return;
+  const file = join(dir, paneKey(paneId));
+  if (override === 'on' || override === 'off') {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(file, override);
+  } else {
+    try { unlinkSync(file); } catch { /* already absent */ }
+  }
 }
 
 // Effective voice state for the current pane.

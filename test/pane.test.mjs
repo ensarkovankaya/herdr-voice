@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { paneKey, readPaneOverride, voiceEnabledForPane, paneIsFocused } from '../src/lib/pane.mjs';
+import { paneKey, readPaneOverride, voiceEnabledForPane, paneIsFocused, listPaneOverrides, writePaneOverride } from '../src/lib/pane.mjs';
 
 test('paneKey sanitizes non-alphanumerics to _', () => {
   assert.equal(paneKey('w653aa39818c041:p4'), 'w653aa39818c041_p4');
@@ -66,4 +66,33 @@ test('paneIsFocused: false when herdr is unavailable or its output is unusable',
   assert.equal(paneIsFocused('w1:p4', { exec: () => { throw new Error('ENOENT'); } }), false); // herdr not on PATH / socket down
   assert.equal(paneIsFocused('w1:p4', { exec: () => 'not json' }), false);
   assert.equal(paneIsFocused('w1:p4', { exec: () => JSON.stringify({ result: {} }) }), false);
+});
+
+test('listPaneOverrides maps override files, skips garbage, missing dir → {}', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'hvpane-'));
+  writeFileSync(join(dir, paneKey('w1:p1')), 'on');
+  writeFileSync(join(dir, paneKey('w1:p2')), 'off\n');
+  writeFileSync(join(dir, paneKey('w1:p3')), 'garbage');
+  assert.deepEqual(listPaneOverrides(dir), { w1_p1: 'on', w1_p2: 'off' });
+  assert.deepEqual(listPaneOverrides(join(dir, 'nope')), {});
+});
+
+test('writePaneOverride writes on/off and clears on null; missing paneId is a no-op', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'hvpane-'));
+  writePaneOverride('w1:p9', 'on', dir);
+  assert.equal(readFileSync(join(dir, paneKey('w1:p9')), 'utf8'), 'on');
+  assert.equal(readPaneOverride('w1:p9', dir), 'on');
+  writePaneOverride('w1:p9', 'off', dir);
+  assert.equal(readPaneOverride('w1:p9', dir), 'off');
+  writePaneOverride('w1:p9', null, dir);
+  assert.equal(existsSync(join(dir, paneKey('w1:p9'))), false);
+  writePaneOverride('w1:p9', null, dir);            // clearing twice is fine
+  writePaneOverride('', 'on', dir);                 // no pane id → no file
+  assert.deepEqual(listPaneOverrides(dir), {});
+});
+
+test('writePaneOverride creates the panes dir on demand', () => {
+  const dir = join(mkdtempSync(join(tmpdir(), 'hvpane-')), 'panes');
+  writePaneOverride('w2:p1', 'off', dir);
+  assert.equal(readPaneOverride('w2:p1', dir), 'off');
 });
