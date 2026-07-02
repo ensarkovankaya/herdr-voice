@@ -20,7 +20,7 @@ esac
 die(){ echo "herdr-voice: $*" >&2; exit 1; }
 [ -f "$CFG" ] || die "no config: $CFG (run install first)"
 role(){ jq -r '.role // "host"' "$CFG"; }
-provider(){ jq -r '.tts.provider // "say"' "$CFG"; }
+provider(){ jq -r '.tts.providers[0] // "say"' "$CFG"; }
 lang(){ jq -r '.language // "en"' "$CFG"; }
 LOCALES="$APP/src/lib/locales"
 # Resolve a spoken string: explicit config field wins, else the shared locale
