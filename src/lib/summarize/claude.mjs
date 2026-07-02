@@ -29,6 +29,14 @@ export function isCliErrorOutput(text) {
   return /not logged in|please run \/login/i.test(text || '');
 }
 
+// Classify a summarizer failure as a `claude` login problem: either the
+// then-guard threw cli_error, or the process exited non-zero having printed
+// an auth-error line (spawnCapture attaches it as err.stdout).
+export function isAuthFailure(err) {
+  if (!err) return false;
+  return err.message === 'cli_error' || isCliErrorOutput(err.stdout);
+}
+
 // Summarizer that asks the user's logged-in Claude CLI (`claude -p`) for a
 // one-sentence summary — no API key, reuses the existing login. model,
 // language, prompt, cmd, and timeoutMs are all configurable via

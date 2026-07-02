@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { makeClaudeSummarizer } from '../src/lib/summarize/claude.mjs';
+import { makeClaudeSummarizer, isAuthFailure } from '../src/lib/summarize/claude.mjs';
 import { RECURSION_GUARD_ENV } from '../src/lib/summarize/spawn.mjs';
 
 function fakeChild({ out = '', err = false } = {}) {
@@ -126,4 +126,30 @@ test('claude: timeout rejects and kills child', async () => {
   const fn = makeClaudeSummarizer({ spawn: () => child }); // never emits close
   await assert.rejects(fn('x', { summarize: { claude: { timeoutMs: 10 } } }));
   assert.equal(killed, true);
+});
+
+test('claude: not-logged-in with non-zero exit is an auth failure (stdout attached)', async () => {
+  const child = new EventEmitter();
+  child.stdout = new EventEmitter();
+  child.stdin = { write() {}, end() {} };
+  child.kill = () => {};
+  const spawn = () => {
+    setImmediate(() => { child.stdout.emit('data', Buffer.from('Not logged in · Please run /login')); child.emit('close', 1); });
+    return child;
+  };
+  const fn = makeClaudeSummarizer({ spawn });
+  const err = await fn('x', { summarize: { claude: {} } }).then(() => null, (e) => e);
+  assert.ok(err, 'rejects');
+  assert.equal(err.stdout, 'Not logged in · Please run /login');
+  assert.equal(isAuthFailure(err), true);
+});
+
+test('isAuthFailure: cli_error message, auth stdout, and non-auth errors', () => {
+  assert.equal(isAuthFailure(new Error('cli_error')), true);
+  const e = new Error('exit 1'); e.stdout = 'Please run /login';
+  assert.equal(isAuthFailure(e), true);
+  const other = new Error('exit 1'); other.stdout = 'segfault';
+  assert.equal(isAuthFailure(other), false);
+  assert.equal(isAuthFailure(new Error('timeout')), false);
+  assert.equal(isAuthFailure(null), false);
 });

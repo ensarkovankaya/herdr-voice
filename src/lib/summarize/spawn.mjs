@@ -22,8 +22,13 @@ export function spawnCapture(cmd, args, { spawn = realSpawn, input = null, timeo
     child.on('error', (e) => finish(reject, e));
     child.on('close', (code) => {
       // A non-zero exit means the tool failed (e.g. `claude` not logged in) —
-      // whatever it printed is an error message, not a summary.
-      if (typeof code === 'number' && code !== 0) return finish(reject, new Error(`exit ${code}`));
+      // whatever it printed is an error message, not a summary. Attach it so
+      // callers can classify the failure (see isAuthFailure).
+      if (typeof code === 'number' && code !== 0) {
+        const e = new Error(`exit ${code}`);
+        e.stdout = out.trim();
+        return finish(reject, e);
+      }
       const t = out.trim(); t ? finish(resolve, t) : finish(reject, new Error('empty'));
     });
     if (input != null) { try { child.stdin.write(input); child.stdin.end(); } catch { /* ignore */ } }
