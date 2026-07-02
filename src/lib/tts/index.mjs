@@ -25,7 +25,7 @@ export function makeSpeaker({ getConfig, log, makeProvider, player } = {}) {
     if (!t) return chain;
     chain = chain.then(async () => {
       const cfg = getConfig();
-      const list = (cfg.tts.providers && cfg.tts.providers.length) ? cfg.tts.providers : [cfg.tts.provider || 'say'];
+      const list = (cfg.tts.providers && cfg.tts.providers.length) ? cfg.tts.providers : ['say'];
       const play = player || makePlayer({ audio: cfg.audio });
       for (let i = 0; i < list.length; i++) {
         const name = list[i];

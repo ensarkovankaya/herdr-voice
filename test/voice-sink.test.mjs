@@ -42,7 +42,7 @@ test('wrong token → 401', async () => {
 
 test('SPEAK log carries session + herd meta fields', async () => {
   const logs = [];
-  const getConfig = () => ({ token: 'T', voice: 'Samantha', enabled: true, tts: { provider: 'piper', piper: { voice: 'tr_TR-dfki-medium' } } });
+  const getConfig = () => ({ token: 'T', voice: 'Samantha', enabled: true, tts: { providers: ['piper'], piper: { voice: 'tr_TR-dfki-medium' } } });
   const { s, port } = await start(makeSinkHandler({ getConfig, speak: () => {}, log: (level, event, fields = {}) => logs.push({ level, event, ...fields }) }));
   await postJson(`http://127.0.0.1:${port}/speak`, { text: 'hi', sessionId: 'abcd1234ef', sessionTitle: 'My Title', workspace: 'ws1', tab: 't1', pane: 'w1:p4' }, { token: 'T' });
   const rec = logs.find((e) => e.event === 'speak');

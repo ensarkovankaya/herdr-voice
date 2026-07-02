@@ -2,11 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeSpeaker } from '../src/lib/tts/index.mjs';
 
-const cfg = { tts: { provider: 'say', say: { voice: 'Samantha' } }, audio: { player: 'auto' } };
+const cfg = { tts: { providers: ['say'], say: { voice: 'Samantha' } }, audio: { player: 'auto' } };
 
 test('speaker: dispatches to provider with text + ctx', async () => {
   const seen = [];
-  const provider = { name: 'say', speak: async (t, ctx) => { seen.push([t, !!ctx.player, ctx.cfg.tts.provider]); return { ok: true }; } };
+  const provider = { name: 'say', speak: async (t, ctx) => { seen.push([t, !!ctx.player, ctx.cfg.tts.providers[0]]); return { ok: true }; } };
   const speak = makeSpeaker({ getConfig: () => cfg, makeProvider: async () => provider, player: async () => {} });
   await speak('hello');
   assert.deepEqual(seen, [['hello', true, 'say']]);
