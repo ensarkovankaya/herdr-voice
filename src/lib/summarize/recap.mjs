@@ -1,6 +1,6 @@
 import { spawnCapture } from './spawn.mjs';
 import { sanitizeForSpeech, shorten } from './heuristic.mjs';
-import { languageName } from './claude.mjs';
+import { languageName, isCliErrorOutput } from './claude.mjs';
 import { extractSessionTitle, extractNewTurns } from '../transcript.mjs';
 import { readSession as realReadSession, writeSession as realWriteSession } from '../session-store.mjs';
 
@@ -57,6 +57,9 @@ export function makeRecapper({
           const input = `CURRENT THEME: ${s.recap || '(none)'}\nLATEST ACTIVITY:\n${extractNewTurns(jsonl, s.transcriptChars || 0)}`;
           const args = ['-p', '--model', claudeCfg.model || 'haiku', prompt];
           const out = await spawnCapture(claudeCfg.cmd || 'claude', args, { spawn, input, timeoutMs: claudeCfg.timeoutMs || 12000 });
+          // A CLI error line (e.g. "Not logged in · Please run /login") must
+          // never become the cached recap — fall through to the prior one.
+          if (isCliErrorOutput(out)) throw new Error('cli_error');
           const recap = shorten(sanitizeForSpeech(out), maxLen);
           if (!recap) throw new Error('empty');
           writeSession(sessionId, { recap, prefix: recap, turnsSinceRecap: 0, transcriptChars: jsonl.length, updatedAt });

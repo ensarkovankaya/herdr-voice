@@ -22,6 +22,13 @@ export function languageName(code) {
   catch { return code; }
 }
 
+// `claude` prints auth errors on stdout (e.g. "Not logged in · Please run
+// /login"), not always with a non-zero exit — so a captured "summary" can
+// actually be the CLI asking us to log in. Never speak or cache those.
+export function isCliErrorOutput(text) {
+  return /not logged in|please run \/login/i.test(text || '');
+}
+
 // Summarizer that asks the user's logged-in Claude CLI (`claude -p`) for a
 // one-sentence summary — no API key, reuses the existing login. model,
 // language, prompt, cmd, and timeoutMs are all configurable via
@@ -33,6 +40,10 @@ export function makeClaudeSummarizer({ spawn } = {}) {
     const prompt = (c.prompt || DEFAULT_PROMPT)
       .replace(/\$\{language\}/g, languageName(c.language || DEFAULT_LANGUAGE));
     const args = ['-p', '--model', c.model || DEFAULT_MODEL, prompt];
-    return spawnCapture(c.cmd || 'claude', args, { spawn, input: text, timeoutMs: c.timeoutMs || 12000 });
+    return spawnCapture(c.cmd || 'claude', args, { spawn, input: text, timeoutMs: c.timeoutMs || 12000 })
+      .then((out) => {
+        if (isCliErrorOutput(out)) throw new Error('cli_error');
+        return out;
+      });
   };
 }

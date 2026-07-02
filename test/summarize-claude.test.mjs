@@ -99,6 +99,24 @@ test('claude: empty stdout rejects', async () => {
   await assert.rejects(fn('x', { summarize: { claude: {} } }));
 });
 
+test('claude: non-zero exit rejects even with stdout', async () => {
+  const child = new EventEmitter();
+  child.stdout = new EventEmitter();
+  child.stdin = { write() {}, end() {} };
+  child.kill = () => {};
+  const spawn = () => {
+    setImmediate(() => { child.stdout.emit('data', Buffer.from('some output')); child.emit('close', 1); });
+    return child;
+  };
+  const fn = makeClaudeSummarizer({ spawn });
+  await assert.rejects(fn('x', { summarize: { claude: {} } }), /exit 1/);
+});
+
+test('claude: "Not logged in" CLI output rejects (never spoken as a summary)', async () => {
+  const fn = makeClaudeSummarizer({ spawn: () => fakeChild({ out: 'Not logged in · Please run /login' }) });
+  await assert.rejects(fn('x', { summarize: { claude: {} } }), /cli_error/);
+});
+
 test('claude: timeout rejects and kills child', async () => {
   let killed = false;
   const child = new EventEmitter();

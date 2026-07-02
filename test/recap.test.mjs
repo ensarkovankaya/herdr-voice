@@ -93,6 +93,21 @@ test('resolvePrefix: claude refresh fails → keeps prior recap, resets counter'
   assert.equal(saved.turnsSinceRecap, 0);
 });
 
+test('resolvePrefix: claude prints "Not logged in" → keeps prior recap, never caches the error text', async () => {
+  let saved;
+  const r = makeRecapper({
+    spawn: fakeSpawn('Not logged in · Please run /login'),
+    readSession: () => ({ recap: 'Prior', turnsSinceRecap: 7 }),
+    writeSession: (_id, d) => { saved = d; },
+    now: () => 0,
+  });
+  const out = await r.resolvePrefix({ sessionId: 's', jsonl: 'x', cfg: claudeCfg() });
+  assert.equal(out, 'Prior');
+  assert.equal(saved.recap, 'Prior');           // error text not cached
+  assert.equal(saved.prefix, 'Prior');
+  assert.equal(saved.turnsSinceRecap, 0);       // token guard: retry in N turns
+});
+
 test('resolvePrefix: claude refresh fails with no prior recap → falls back to ai-title', async () => {
   const r = makeRecapper({
     spawn: failSpawn(),
