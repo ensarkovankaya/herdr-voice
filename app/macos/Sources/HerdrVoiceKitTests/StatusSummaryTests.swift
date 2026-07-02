@@ -4,16 +4,22 @@ import HerdrVoiceKit
 func statusSummaryTests(_ t: TestReporter) {
     t.section("StatusSummary")
 
-    // providerLine: explicit provider wins.
-    t.eq(StatusSummary.providerLine(provider: "elevenlabs", providers: ["say"]),
-         "Ses motoru: elevenlabs", "explicit provider")
-    // providerLine: nil provider falls back to first non-empty of providers.
-    t.eq(StatusSummary.providerLine(provider: nil, providers: ["openai", "say"]),
-         "Ses motoru: openai", "falls back to first provider")
-    // providerLine: empty provider is treated as absent.
-    t.eq(StatusSummary.providerLine(provider: "", providers: ["", "say"]),
-         "Ses motoru: say", "skips empty strings")
-    // providerLine: nothing configured -> macOS default "say".
+    // providerLine: full priority chain from providers (active engine first).
+    t.eq(StatusSummary.providerLine(provider: nil, providers: ["gemini", "piper", "say"]),
+         "Ses motoru: gemini → piper → say", "full chain in priority order")
+    // single-entry providers → one name.
+    t.eq(StatusSummary.providerLine(provider: "say", providers: ["say"]),
+         "Ses motoru: say", "single provider")
+    // providers set, provider empty → providers win (matches router providers[0]-first).
+    t.eq(StatusSummary.providerLine(provider: "", providers: ["gemini", "say"]),
+         "Ses motoru: gemini → say", "providers win over empty provider")
+    // empty entries in providers are skipped.
+    t.eq(StatusSummary.providerLine(provider: nil, providers: ["", "gemini", ""]),
+         "Ses motoru: gemini", "skips empty entries")
+    // no providers → fall back to the single provider field.
+    t.eq(StatusSummary.providerLine(provider: "elevenlabs", providers: []),
+         "Ses motoru: elevenlabs", "falls back to provider when providers empty")
+    // nothing configured → say.
     t.eq(StatusSummary.providerLine(provider: nil, providers: []),
          "Ses motoru: say", "defaults to say")
 
