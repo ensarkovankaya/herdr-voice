@@ -7,7 +7,7 @@ func routerModelsTests(_ t: TestReporter) {
     let stateJSON = """
     {"enabled":true,"audioMuted":true,"sessionDefault":"on","muteFocusedPane":true,"language":"tr",
      "remote":{"present":true,"ip":"100.1.2.3","port":8973,"expiresAt":123.0},
-     "tts":{"provider":"gemini","providers":["gemini","piper"]},
+     "tts":{"providers":["gemini","piper"]},
      "messages":[
        {"id":"0-1","ts":"1970-01-01T00:00:00.000Z","text":"done","kind":"summary","cueKind":null,
         "sessionId":"s1","sessionTitle":"My App","workspace":"","tab":"","pane":"p1","mode":"local","provider":"gemini"}
@@ -29,14 +29,13 @@ func routerModelsTests(_ t: TestReporter) {
 
     let absentJSON = """
     {"enabled":false,"audioMuted":false,"sessionDefault":"on","muteFocusedPane":false,"language":"en",
-     "remote":{"present":false},"tts":{"provider":null,"providers":[]},"messages":[]}
+     "remote":{"present":false},"tts":{"providers":[]},"messages":[]}
     """
     do {
         let state = try RouterDecoder.state(Data(absentJSON.utf8))
         t.check(!state.audioMuted, "state.audioMuted false when absent")
         t.check(!state.remote.present, "remote absent")
         t.check(state.remote.ip == nil, "remote ip nil")
-        t.check(state.tts.provider == nil, "tts provider nil")
         t.check(state.messages.isEmpty, "messages empty")
     } catch { t.check(false, "absent decode threw \(error)") }
 

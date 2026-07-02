@@ -4,14 +4,10 @@ import Foundation
 // the wording and fallbacks are unit-testable. All copy is Turkish.
 public enum StatusSummary {
     // The active TTS engine plus its fallback chain, in the router's priority
-    // order (providers[0] is the active engine; the rest are fallbacks). Falls
-    // back to `provider`, then the macOS built-in "say".
-    public static func providerLine(provider: String?, providers: [String]) -> String {
+    // order (providers[0] is the active engine; the rest are fallbacks).
+    public static func providerLine(providers: [String]) -> String {
         let chain = providers.filter { !$0.isEmpty }
-        let names: [String]
-        if !chain.isEmpty { names = chain }
-        else if let p = provider, !p.isEmpty { names = [p] }
-        else { names = ["say"] }
+        let names = chain.isEmpty ? ["say"] : chain
         return "Ses motoru: " + names.joined(separator: " → ")
     }
 
