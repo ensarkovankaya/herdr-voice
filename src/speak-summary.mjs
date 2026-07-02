@@ -4,7 +4,7 @@ import { loadConfig } from './lib/config.mjs';
 import { makeSummarizer } from './lib/summarize/index.mjs';
 import { makeLlmSummarizer } from './lib/summarize/llm.mjs';
 import { makeCommandSummarizer } from './lib/summarize/command.mjs';
-import { makeClaudeSummarizer } from './lib/summarize/claude.mjs';
+import { makeClaudeSummarizer, isAuthFailure } from './lib/summarize/claude.mjs';
 import { RECURSION_GUARD_ENV } from './lib/summarize/spawn.mjs';
 import { postJson } from './lib/http.mjs';
 import { voiceEnabledForPane, paneIsFocused } from './lib/pane.mjs';
@@ -61,20 +61,25 @@ async function main() {
   if (!input.transcript_path) return;
   const jsonl = await readSettledFile(input.transcript_path);
   if (jsonl == null) return;
+  // Did any claude call fail because the CLI is logged out? Reported to the
+  // router so it can log + surface the state in the menu-bar app.
+  let summarizeAuthError = false;
+  const noteError = (e) => { if (isAuthFailure(e)) summarizeAuthError = true; };
   const summarize = makeSummarizer({
     getLlm: () => makeLlmSummarizer(),
     getCommand: () => makeCommandSummarizer(),
     getClaude: () => makeClaudeSummarizer(),
+    onError: noteError,
   });
   const body = await summarize(extractLastAssistantText(jsonl), cfg);
   const sessionId = input.session_id || (input.transcript_path || '').split('/').pop().replace(/\.jsonl$/, '');
   const sessionTitle = extractSessionTitle(jsonl);
-  const prefix = await makeRecapper({}).resolvePrefix({ sessionId, jsonl, cfg });
+  const prefix = await makeRecapper({ onError: noteError }).resolvePrefix({ sessionId, jsonl, cfg });
   const text = prefix ? formatPrefix(prefix, body, cfg) : body;
   try { pruneOld(Date.now(), (cfg.summarize.recap || {}).pruneAfterDays || 30); } catch { /* swallow */ }
   try {
     await postJson(`http://${cfg.host}:${cfg.port}/speak`, {
-      text, sessionId, sessionTitle, kind: 'summary',
+      text, sessionId, sessionTitle, kind: 'summary', summarizeAuthError,
       workspace: process.env.HERDR_WORKSPACE_ID || '',
       tab: process.env.HERDR_TAB_ID || '',
       pane: process.env.HERDR_PANE_ID || '',
