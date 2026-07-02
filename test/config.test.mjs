@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { writeFileSync, mkdtempSync } from 'node:fs';
+import { writeFileSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir, homedir } from 'node:os';
 import { join } from 'node:path';
 import { loadConfig, configPath } from '../src/lib/config.mjs';
@@ -76,7 +76,8 @@ function withConfig(obj, fn) {
 
 test('loadConfig: nested defaults present', () => withConfig({}, () => {
   const c = loadConfig();
-  assert.equal(c.tts.provider, 'say');
+  assert.deepEqual(c.tts.providers, ['say']);
+  assert.equal(c.tts.provider, undefined);
   assert.equal(c.tts.say.voice, 'Samantha');
   assert.equal(c.tts.gemini.model, 'gemini-2.5-flash-preview-tts');
   assert.equal(c.audio.player, 'auto');
@@ -85,17 +86,40 @@ test('loadConfig: nested defaults present', () => withConfig({}, () => {
   assert.deepEqual(c.summarize.claude, {});
 }));
 
-test('loadConfig: tts.providers defaults to [provider] (backward compatible)', () => withConfig({ tts: { provider: 'piper' } }, () => {
-  assert.deepEqual(loadConfig().tts.providers, ['piper']);
-}));
+test('loadConfig: legacy tts.provider is migrated into providers and removed from disk', () => {
+  const p = writeCfg({ token: 'SECRET', tts: { provider: 'piper', piper: { voice: 'v' } } });
+  const c = loadConfig();
+  assert.deepEqual(c.tts.providers, ['piper']);          // folded
+  assert.equal(c.tts.provider, undefined);                // gone from loaded config
+  const onDisk = JSON.parse(readFileSync(p, 'utf8'));
+  assert.equal(onDisk.tts.provider, undefined);           // rewritten without provider
+  assert.deepEqual(onDisk.tts.providers, ['piper']);      // rewritten with providers
+  assert.equal(onDisk.token, 'SECRET');                   // other keys preserved
+});
+
+test('loadConfig: provider + providers → provider dropped, providers kept in order', () => {
+  const p = writeCfg({ tts: { provider: 'say', providers: ['gemini', 'piper', 'say'] } });
+  const c = loadConfig();
+  assert.deepEqual(c.tts.providers, ['gemini', 'piper', 'say']);
+  assert.equal(c.tts.provider, undefined);
+  assert.equal(JSON.parse(readFileSync(p, 'utf8')).tts.provider, undefined);
+});
 
 test('loadConfig: explicit tts.providers fallback order is preserved', () => withConfig({ tts: { providers: ['gemini', 'piper', 'say'] } }, () => {
   assert.deepEqual(loadConfig().tts.providers, ['gemini', 'piper', 'say']);
 }));
 
-test('loadConfig: no tts block → say defaults (no v1 migration)', () => withConfig({ voice: 'Daniel' }, () => {
+test('loadConfig: migration is idempotent — no provider key means no rewrite', () => {
+  const p = writeCfg({ tts: { providers: ['say'], say: { voice: 'Samantha' } } });
+  const before = readFileSync(p, 'utf8');
+  loadConfig();
+  assert.equal(readFileSync(p, 'utf8'), before);          // byte-identical, no rewrite
+});
+
+test('loadConfig: no tts block → providers defaults to [say]', () => withConfig({ voice: 'Daniel' }, () => {
   const c = loadConfig();
-  assert.equal(c.tts.provider, 'say');
+  assert.deepEqual(c.tts.providers, ['say']);
+  assert.equal(c.tts.provider, undefined);
   assert.equal(c.tts.say.voice, 'Samantha'); // flat v1 `voice` is ignored, not migrated
 }));
 

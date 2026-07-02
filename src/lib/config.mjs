@@ -10,7 +10,6 @@ const DEFAULTS = {
 };
 
 const TTS_DEFAULTS = {
-  provider: 'say',
   say: { voice: 'Samantha' },
   piper: { cmd: 'python3 -m piper', voice: 'en_US-lessac-medium', dataDir: join(homedir(), '.herdr-voice', 'voices') },
   gemini: { model: 'gemini-2.5-flash-preview-tts', voice: 'Kore', apiKeyEnv: 'GEMINI_API_KEY', languageCode: '' },
@@ -29,16 +28,26 @@ export function configPath() {
 // Layer the user's tts settings over the defaults so every provider's block is
 // fully populated regardless of which provider is selected.
 function mergeTts(tts = {}) {
-  const provider = tts.provider || TTS_DEFAULTS.provider;
+  const providers = (Array.isArray(tts.providers) && tts.providers.length) ? tts.providers : ['say'];
   return {
-    provider,
-    // Fallback priority list; tried in order until one produces audio. Falls
-    // back to the single `provider` when not configured (backward compatible).
-    providers: (Array.isArray(tts.providers) && tts.providers.length) ? tts.providers : [provider],
+    // Fallback priority list; tried in order until one produces audio.
+    providers,
     say: { ...TTS_DEFAULTS.say, ...(tts.say || {}) },
     piper: { ...TTS_DEFAULTS.piper, ...(tts.piper || {}) },
     gemini: { ...TTS_DEFAULTS.gemini, ...(tts.gemini || {}) },
   };
+}
+
+// One-time migration: fold a legacy singular `tts.provider` into the ordered
+// `tts.providers` list and drop the key. Mutates `raw` in place; returns true
+// only when something changed (so the caller rewrites the file just once).
+function migrateTtsProvider(raw) {
+  if (!raw || !raw.tts || !Object.prototype.hasOwnProperty.call(raw.tts, 'provider')) return false;
+  if (!Array.isArray(raw.tts.providers) || raw.tts.providers.length === 0) {
+    raw.tts.providers = [raw.tts.provider];
+  }
+  delete raw.tts.provider;
+  return true;
 }
 
 // Read config.json (missing/invalid -> defaults), then layer user values over
@@ -46,6 +55,9 @@ function mergeTts(tts = {}) {
 export function loadConfig() {
   let raw = {};
   try { raw = JSON.parse(readFileSync(configPath(), 'utf8')); } catch { /* defaults */ }
+  if (migrateTtsProvider(raw)) {
+    try { writeFileSync(configPath(), `${JSON.stringify(raw, null, 2)}\n`); } catch { /* best-effort; never break load */ }
+  }
   const merged = { ...DEFAULTS, ...raw };
   merged.tts = mergeTts(raw.tts);
   merged.audio = { ...AUDIO_DEFAULTS, ...(raw.audio || {}) };
