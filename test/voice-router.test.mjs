@@ -365,3 +365,63 @@ test('cue posts never touch authBroken', async () => {
   assert.equal(r.json.summarize.authBroken, true);   // cue did not clear it
   s.close();
 });
+
+test('POST /replay speaks the last message again without re-recording', async () => {
+  const spoken = [];
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf(), speak: (t) => spoken.push(t), forward: () => Promise.resolve(), now: () => 0, log: noLog }));
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'first' }, { token: 'T' });
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'second' }, { token: 'T' });
+  await flush();
+  const r = await postJson(`http://127.0.0.1:${port}/replay`, {}, { token: 'T' });
+  await flush();
+  assert.equal(r.status, 200);
+  assert.deepEqual(spoken, ['first', 'second', 'second']);   // replay spoke the newest
+  const st = await getJson(port, '/state');
+  assert.equal(st.json.messages.length, 2);                  // NOT re-recorded
+  s.close();
+});
+
+test('POST /replay {id} speaks that specific message', async () => {
+  const spoken = [];
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf(), speak: (t) => spoken.push(t), forward: () => Promise.resolve(), now: () => 0, log: noLog }));
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'alpha' }, { token: 'T' });
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'beta' }, { token: 'T' });
+  await flush();
+  const st = await getJson(port, '/state');
+  const alphaId = st.json.messages.find((m) => m.text === 'alpha').id;
+  const r = await postJson(`http://127.0.0.1:${port}/replay`, { id: alphaId }, { token: 'T' });
+  await flush();
+  assert.equal(r.status, 200);
+  assert.deepEqual(JSON.parse(r.body), { ok: true, id: alphaId });
+  assert.equal(spoken[spoken.length - 1], 'alpha');
+  s.close();
+});
+
+test('POST /replay → 404 when buffer empty or id unknown', async () => {
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf(), speak: () => {}, forward: () => Promise.resolve(), now: () => 0, log: noLog }));
+  const r1 = await postJson(`http://127.0.0.1:${port}/replay`, {}, { token: 'T' });
+  assert.equal(r1.status, 404);
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'x' }, { token: 'T' });
+  await flush();
+  const r2 = await postJson(`http://127.0.0.1:${port}/replay`, { id: 'nope' }, { token: 'T' });
+  assert.equal(r2.status, 404);
+  s.close();
+});
+
+test('POST /replay speaks even when audioMuted (explicit user intent) and logs replay', async () => {
+  const spoken = []; const logs = [];
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf({ audioMuted: true }), speak: (t) => spoken.push(t), forward: () => Promise.resolve(), now: () => 0,
+    log: (lvl, ev, f = {}) => logs.push({ ev, ...f }) }));
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'muted msg' }, { token: 'T' });
+  await flush();
+  const r = await postJson(`http://127.0.0.1:${port}/replay`, {}, { token: 'T' });
+  await flush();
+  assert.equal(r.status, 200);
+  assert.deepEqual(spoken, ['muted msg']);   // /speak was muted; /replay still spoke
+  assert.ok(logs.find((l) => l.ev === 'replay'));
+  s.close();
+});

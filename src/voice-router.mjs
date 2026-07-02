@@ -150,6 +150,16 @@ export function makeRouter({
         log('INFO', 'audio', { audioMuted: newMuted, source: 'app' });
         return sendJson(res, 200, { audioMuted: newMuted });
       }
+      if (req.url === '/replay') {
+        // Menu-driven re-speak of a ring-buffer entry. Explicit user intent:
+        // speaks locally even when audioMuted, and never re-records (the
+        // utterance is already in the buffer — no duplicate, no SSE frame).
+        const msg = body.id ? messages.find((m) => m.id === body.id) : messages[messages.length - 1];
+        if (!msg) return sendJson(res, 404, { error: 'no message' });
+        log('INFO', 'replay', { id: msg.id, text: msg.text.slice(0, 120) });
+        speak(msg.text);
+        return sendJson(res, 200, { ok: true, id: msg.id });
+      }
       return sendJson(res, 404, { error: 'not found' });
     } catch (e) {
       log('ERROR', 'handler_error', { url: req.url, error: e && e.message });
