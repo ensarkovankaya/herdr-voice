@@ -4,6 +4,75 @@ All notable changes to herdr-voice are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project aims
 to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] — 2026-07-03
+
+The desktop release: a native macOS menu-bar companion app on top of a new
+live router API, notifications-only mode, per-pane control from the UI, and a
+summarizer health surface. One breaking config change (`tts.provider`,
+auto-migrated).
+
+### Added
+
+- **HerdrVoiceBar — macOS menu-bar app** (`app/macos/`, SwiftPM, builds with
+  Command Line Tools only; ad-hoc-signed bundle via `build-app.sh`, one-shot
+  install via `install-app.sh`):
+  - Live status menu fed by the router's SSE stream: two-line status header
+    (state + engine chain + summarizer mode), recent messages with two-line
+    rows and colored kind dots, SF Symbol icons.
+  - Pause/resume (global master), **Sesli oku** toggle (audio mute), and a
+    **Bildirimler** mode submenu (Tümü / Sadece onay / Kapalı) with desktop
+    notifications delivered via `osascript` (ad-hoc bundles can't use
+    `UNUserNotification`).
+  - **Per-message quick actions** — re-speak (replay) and copy; utility rows
+    to open the log/config files and restart the router service.
+  - **Pane sesleri** — per-pane voice override submenu (Varsayılan / Açık /
+    Kapalı), writing the same `~/.herdr-voice/panes/` override files the
+    hooks and the herdr keybind already use.
+  - **Launch at login** via `SMAppService` with LaunchAgent-plist fallback
+    and a one-time, self-healing migration (handles `requiresApproval`).
+  - **Summarizer health surface** — an "Özet: <mode>" row, a menu warning
+    plus a one-shot notification when the Claude CLI session drops
+    (`/login` needed).
+- **Router live API** (documented in the new [docs/api.md](docs/api.md)):
+  `GET /state` (full snapshot incl. messages, panes, summarize status),
+  `GET /events` (SSE), `POST /toggle`, `POST /audio`, `POST /replay`
+  (re-speak a recent message — bypasses mute, never re-records) and
+  `POST /pane` (per-pane override), plus a persisted recent-message ring
+  buffer (`history.jsonl`).
+- **Notifications-only mode** — `audioMuted` keeps recording/broadcasting
+  utterances (so the menu and notifications stay live) without speaking or
+  forwarding.
+- **Summarizer auth detection** — Claude CLI logouts are classified
+  (`isAuthFailure`), reported by the Stop hook (`summarizeAuthError`), logged
+  once per transition (`summarize_auth`), and exposed in
+  `/state.summarize.authBroken`.
+- Utterances now carry `kind` / `cueKind` metadata end to end (hooks → router
+  → SSE → app), driving notification policy and menu dots.
+
+### Changed
+
+- **BREAKING: `tts.provider` is gone — `tts.providers` (ordered fallback
+  list) is the single source of truth**; `providers[0]` is the active engine.
+  Existing configs are migrated automatically on first load (one-time,
+  key-preserving rewrite; a legacy `provider` folds into `providers`). The
+  CLI, installer, and docs now speak providers-only.
+- The Stop hook reports summarizer auth failures to the router on
+  `POST /speak`.
+
+### Fixed
+
+- Claude CLI auth errors ("Not logged in · Please run /login") are never
+  spoken or cached as summaries/recaps: non-zero exits reject (with stdout
+  attached), error-shaped stdout is rejected, and the recap store can no
+  longer be poisoned.
+- Router handler wraps routes in try/catch — a throwing route returns 500
+  instead of hanging the request.
+- SSE consumption in the app uses `URLSessionDataDelegate` (the
+  `bytes.lines` API buffers `text/event-stream`), with a request timeout
+  above the router's keep-alive so idle streams survive.
+- `voice-sink` and the `herdr-voice` CLI read `tts.providers[0]` (dead
+  `tts.provider` fallbacks removed).
+
 ## [2.0.0] — 2026-07-01
 
 Cross-platform release with pluggable speech and summarization. See
@@ -121,4 +190,5 @@ Initial release.
   service; one-command install/uninstall.
 
 [1.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v1.0.0
-[2.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v2.0.0-rc.14
+[2.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v2.0.0
+[3.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v3.0.0
