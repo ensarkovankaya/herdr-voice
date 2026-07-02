@@ -1,7 +1,7 @@
 // Events fanned out to SSE clients by the streaming logger. `speak` is NOT here:
 // it is broadcast directly with the full ring-buffer entry (richer than a log line).
 export const STREAM_EVENTS = new Set([
-  'toggle', 'audio', 'summarize_auth', 'tts_fallback', 'tts_spoke', 'register', 'deregister',
+  'toggle', 'audio', 'summarize_auth', 'pane_override', 'tts_fallback', 'tts_spoke', 'register', 'deregister',
   'presence_register', 'presence_deregister',
 ]);
 

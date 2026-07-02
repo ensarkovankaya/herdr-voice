@@ -3,6 +3,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig, setEnabled as setEnabledConfig, setAudioMuted as setAudioMutedConfig } from './lib/config.mjs';
+import { listPaneOverrides, writePaneOverride, paneKey } from './lib/pane.mjs';
 import { readJsonBody, sendJson, postJson } from './lib/http.mjs';
 import { makeSpeaker } from './lib/tts/index.mjs';
 import { makeLogger } from './lib/logger.mjs';
@@ -18,6 +19,8 @@ export function makeRouter({
   initialHistory = [],
   setEnabled = setEnabledConfig,
   setAudioMuted = setAudioMutedConfig,
+  getPaneOverrides = listPaneOverrides,
+  setPaneOverride = writePaneOverride,
   ringSize = 50, textCap = 500,
 }) {
   let remote = null; // {ip, port, expiresAt}
@@ -78,6 +81,20 @@ export function makeRouter({
     });
   }
 
+  // Distinct panes seen in the ring buffer, newest first, with the pane's
+  // newest session title and its current override ('on'|'off'|null).
+  function panesList() {
+    const overrides = getPaneOverrides();
+    const seen = new Set(); const out = [];
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const p = messages[i].pane;
+      if (!p || seen.has(p)) continue;
+      seen.add(p);
+      out.push({ pane: p, sessionTitle: messages[i].sessionTitle || '', override: overrides[paneKey(p)] || null });
+    }
+    return out;
+  }
+
   function snapshot(cfg) {
     const live = remote && now() < remote.expiresAt;
     return {
@@ -89,6 +106,7 @@ export function makeRouter({
       remote: live ? { present: true, ip: remote.ip, port: remote.port, expiresAt: remote.expiresAt } : { present: false },
       tts: { providers: cfg.tts?.providers || [] },
       summarize: { mode: cfg.summarize?.mode || 'heuristic', authBroken: summarizeAuth },
+      panes: panesList(),
       messages: messages.slice(),
     };
   }
@@ -149,6 +167,15 @@ export function makeRouter({
         // Logged through the streaming logger → fans out as SSE `audio` (see STREAM_EVENTS).
         log('INFO', 'audio', { audioMuted: newMuted, source: 'app' });
         return sendJson(res, 200, { audioMuted: newMuted });
+      }
+      if (req.url === '/pane') {
+        const pane = typeof body.pane === 'string' ? body.pane : '';
+        if (!pane) return sendJson(res, 400, { error: 'pane required' });
+        const override = body.override === 'on' || body.override === 'off' ? body.override : null;
+        setPaneOverride(pane, override);
+        // Streamed to SSE clients via STREAM_EVENTS so the menu updates live.
+        log('INFO', 'pane_override', { pane, override });
+        return sendJson(res, 200, { ok: true, pane, override });
       }
       if (req.url === '/replay') {
         // Menu-driven re-speak of a ring-buffer entry. Explicit user intent:

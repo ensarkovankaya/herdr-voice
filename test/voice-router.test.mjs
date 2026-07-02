@@ -425,3 +425,52 @@ test('POST /replay speaks even when audioMuted (explicit user intent) and logs r
   assert.ok(logs.find((l) => l.ev === 'replay'));
   s.close();
 });
+
+test('GET /state lists distinct panes newest-first with overrides', async () => {
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf(), speak: () => {}, forward: () => Promise.resolve(), now: () => 0, log: noLog,
+    getPaneOverrides: () => ({ w1_p1: 'off' }) }));
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'a', pane: 'w1:p1', sessionTitle: 'Proj A' }, { token: 'T' });
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'b', pane: 'w1:p2', sessionTitle: 'Proj B' }, { token: 'T' });
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'c', pane: 'w1:p1', sessionTitle: 'Proj A2' }, { token: 'T' });
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'd' }, { token: 'T' });   // no pane → skipped
+  await flush();
+  const r = await getJson(port, '/state');
+  assert.deepEqual(r.json.panes, [
+    { pane: 'w1:p1', sessionTitle: 'Proj A2', override: 'off' },   // newest first, newest title
+    { pane: 'w1:p2', sessionTitle: 'Proj B', override: null },
+  ]);
+  s.close();
+});
+
+test('POST /pane sets and clears an override, logs pane_override', async () => {
+  const calls = []; const logs = [];
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf(), speak: () => {}, forward: () => Promise.resolve(), now: () => 0,
+    log: (lvl, ev, f = {}) => logs.push({ ev, ...f }),
+    setPaneOverride: (pane, ov) => calls.push([pane, ov]) }));
+  let r = await postJson(`http://127.0.0.1:${port}/pane`, { pane: 'w1:p1', override: 'off' }, { token: 'T' });
+  assert.equal(r.status, 200);
+  assert.deepEqual(JSON.parse(r.body), { ok: true, pane: 'w1:p1', override: 'off' });
+  r = await postJson(`http://127.0.0.1:${port}/pane`, { pane: 'w1:p1', override: null }, { token: 'T' });
+  assert.deepEqual(JSON.parse(r.body), { ok: true, pane: 'w1:p1', override: null });
+  r = await postJson(`http://127.0.0.1:${port}/pane`, { pane: 'w1:p1', override: 'bogus' }, { token: 'T' });
+  assert.deepEqual(JSON.parse(r.body), { ok: true, pane: 'w1:p1', override: null });   // normalized
+  assert.deepEqual(calls, [['w1:p1', 'off'], ['w1:p1', null], ['w1:p1', null]]);
+  assert.equal(logs.filter((l) => l.ev === 'pane_override').length, 3);
+  s.close();
+});
+
+test('POST /pane without pane → 400', async () => {
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf(), speak: () => {}, forward: () => Promise.resolve(), now: () => 0, log: noLog,
+    setPaneOverride: () => {} }));
+  const r = await postJson(`http://127.0.0.1:${port}/pane`, { override: 'off' }, { token: 'T' });
+  assert.equal(r.status, 400);
+  s.close();
+});
+
+test('pane_override is a streamed event', async () => {
+  const { makeStreamingLog, makeEventHub, STREAM_EVENTS } = await import('../src/lib/events.mjs');
+  assert.ok(STREAM_EVENTS.has('pane_override'));
+});
