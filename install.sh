@@ -49,15 +49,15 @@ if [ "$MODE" = host ]; then
       case "$ans" in say|piper|gemini) PROVIDER="$ans" ;; esac
     fi
     case "$PROVIDER" in
-      say)    TTS_JSON='{"provider":"say","say":{"voice":"Samantha"}}' ;;
-      piper)  TTS_JSON='{"provider":"piper","piper":{"cmd":"python3 -m piper","voice":"en_US-lessac-medium","dataDir":"'"$APP"'/voices"}}' ;;
+      say)    TTS_JSON='{"providers":["say"],"say":{"voice":"Samantha"}}' ;;
+      piper)  TTS_JSON='{"providers":["piper"],"piper":{"cmd":"python3 -m piper","voice":"en_US-lessac-medium","dataDir":"'"$APP"'/voices"}}' ;;
       gemini)
         KEYENV="GEMINI_API_KEY"; GVOICE="Kore"
         if [ -t 0 ]; then
           printf "Gemini API key env var (GEMINI_API_KEY): "; read -r k || k=""; [ -n "$k" ] && KEYENV="$k"
           printf "Gemini voice (Kore): "; read -r v || v=""; [ -n "$v" ] && GVOICE="$v"
         fi
-        TTS_JSON='{"provider":"gemini","gemini":{"model":"gemini-2.5-flash-preview-tts","voice":"'"$GVOICE"'","apiKeyEnv":"'"$KEYENV"'","languageCode":""}}' ;;
+        TTS_JSON='{"providers":["gemini"],"gemini":{"model":"gemini-2.5-flash-preview-tts","voice":"'"$GVOICE"'","apiKeyEnv":"'"$KEYENV"'","languageCode":""}}' ;;
     esac
     jq -n --arg t "$(openssl rand -hex 16)" --argjson tts "$TTS_JSON" \
       '{token:$t, host:"127.0.0.1", port:8973, language:"en", enabled:true, role:"host", remoteHost:"", remoteTtlMs:3600000, forwardTimeoutMs:1500, postTimeoutMs:1500, tts:$tts, audio:{player:"auto"}, summarize:{mode:"heuristic", maxLen:240}}' > "$CFG"
@@ -72,7 +72,7 @@ else
   DAEMON="voice-sink.mjs"
   # preserve an existing tts/language on reinstall, else default to say/en
   LANG_=$(jq -r '.language // "en"' "$CFG" 2>/dev/null || echo en)
-  PREV_TTS=$(jq -c '.tts // {"provider":"say","say":{"voice":"Samantha"}}' "$CFG" 2>/dev/null || echo '{"provider":"say","say":{"voice":"Samantha"}}')
+  PREV_TTS=$(jq -c '.tts // {"providers":["say"],"say":{"voice":"Samantha"}}' "$CFG" 2>/dev/null || echo '{"providers":["say"],"say":{"voice":"Samantha"}}')
   jq -n --arg t "$TOKEN_ARG" --arg h "$HOST_IP" --arg r "$RHOST" --arg l "$LANG_" --argjson tts "$PREV_TTS" \
     '{token:$t, host:$h, port:8973, language:$l, enabled:true, role:"remote", remoteHost:$r, remoteTtlMs:3600000, forwardTimeoutMs:1500, postTimeoutMs:1500, tts:$tts, audio:{player:"auto"}, summarize:{mode:"heuristic", maxLen:240}}' > "$CFG"
   echo "config written: $CFG"
