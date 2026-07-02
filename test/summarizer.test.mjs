@@ -38,3 +38,20 @@ test('empty input -> fallback', async () => {
   const s = makeSummarizer({});
   assert.equal(await s('', cfg()), 'Done.');
 });
+
+test('failure invokes onError with the error, then falls back', async () => {
+  let got;
+  const s = makeSummarizer({
+    getClaude: () => async () => { throw new Error('cli_error'); },
+    onError: (e) => { got = e; },
+  });
+  assert.equal(await s('Plain text.', cfg({ mode: 'claude' })), 'Plain text.');
+  assert.equal(got.message, 'cli_error');
+});
+
+test('success does not invoke onError', async () => {
+  let called = false;
+  const s = makeSummarizer({ getClaude: () => async () => 'ok', onError: () => { called = true; } });
+  assert.equal(await s('x', cfg({ mode: 'claude' })), 'ok');
+  assert.equal(called, false);
+});

@@ -144,3 +144,17 @@ test('resolvePrefix: recap disabled → ai-title even in claude mode', async () 
   });
   assert.equal(out, 'T');
 });
+
+test('resolvePrefix: refresh failure reports the error via onError', async () => {
+  let got;
+  const r = makeRecapper({
+    spawn: fakeSpawn('Not logged in · Please run /login'),
+    readSession: () => ({ recap: 'Prior', turnsSinceRecap: 7 }),
+    writeSession: () => {},
+    now: () => 0,
+    onError: (e) => { got = e; },
+  });
+  const out = await r.resolvePrefix({ sessionId: 's', jsonl: 'x', cfg: claudeCfg() });
+  assert.equal(out, 'Prior');
+  assert.equal(got.message, 'cli_error');
+});

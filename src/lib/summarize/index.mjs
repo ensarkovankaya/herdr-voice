@@ -3,7 +3,7 @@ import { heuristicSummarize, sanitizeForSpeech, shorten } from './heuristic.mjs'
 // Build the summarizer dispatcher. Routes to heuristic/llm/command/claude per
 // cfg.summarize.mode, and always falls back to the heuristic on empty text, an
 // unavailable mode, or any llm/command/claude failure.
-export function makeSummarizer({ getLlm, getCommand, getClaude } = {}) {
+export function makeSummarizer({ getLlm, getCommand, getClaude, onError } = {}) {
   return async function summarize(text, cfg) {
     const maxLen = cfg.summarize.maxLen || 240;
     const fallback = cfg.fallback || 'Done.';
@@ -18,6 +18,6 @@ export function makeSummarizer({ getLlm, getCommand, getClaude } = {}) {
       if (!fn) return heuristic();
       const clean = shorten(sanitizeForSpeech(await fn(text, cfg)), maxLen);
       return clean || heuristic();
-    } catch { return heuristic(); }
+    } catch (e) { onError?.(e); return heuristic(); }
   };
 }

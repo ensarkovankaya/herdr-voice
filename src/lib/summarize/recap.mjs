@@ -31,6 +31,7 @@ export function makeRecapper({
   readSession = realReadSession,
   writeSession = realWriteSession,
   now = () => Date.now(),
+  onError,
 } = {}) {
   return {
     async resolvePrefix({ sessionId, jsonl, cfg }) {
@@ -64,7 +65,8 @@ export function makeRecapper({
           if (!recap) throw new Error('empty');
           writeSession(sessionId, { recap, prefix: recap, turnsSinceRecap: 0, transcriptChars: jsonl.length, updatedAt });
           return recap;
-        } catch {
+        } catch (e) {
+          onError?.(e);
           // Keep the prior recap (or ai-title if none); reset the counter so we
           // retry in N turns, not every turn (token guard).
           const prefix = s.recap || extractSessionTitle(jsonl);
