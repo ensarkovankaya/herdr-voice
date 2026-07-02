@@ -25,6 +25,13 @@ final class LoginItemManager {
         guard legacy.isEnabled else { return }
         do {
             try SMAppService.mainApp.register()
+            guard SMAppService.mainApp.status == .enabled else {
+                // Pending user approval in System Settings — keep the LaunchAgent
+                // until the SMAppService item is actually active; we retry at the
+                // next launch and migrate once it is approved.
+                NSLog("herdr-voice: SMAppService login item requires approval; keeping LaunchAgent for now")
+                return
+            }
             try legacy.disable()
             NSLog("herdr-voice: login item migrated LaunchAgent → SMAppService")
         } catch {
@@ -34,13 +41,19 @@ final class LoginItemManager {
 
     func toggle() {
         if isEnabled {
-            if SMAppService.mainApp.status == .enabled {
+            let status = SMAppService.mainApp.status
+            if status == .enabled || status == .requiresApproval {
                 do { try SMAppService.mainApp.unregister() }
                 catch { NSLog("herdr-voice: SMAppService unregister failed: \(error)") }
             }
             try? legacy.disable()
         } else {
-            do { try SMAppService.mainApp.register() }
+            do {
+                try SMAppService.mainApp.register()
+                if SMAppService.mainApp.status == .requiresApproval {
+                    NSLog("herdr-voice: login item registered — approval needed in System Settings › Login Items")
+                }
+            }
             catch {
                 NSLog("herdr-voice: SMAppService register failed, falling back to LaunchAgent: \(error)")
                 try? legacy.enable()
