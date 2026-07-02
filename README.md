@@ -17,6 +17,8 @@ ______________________________________________________________________
 - 🧹 **Speech-friendly summaries** — markdown, code blocks, and emoji are stripped. Summarizer is pluggable too: heuristic (default), your logged-in Claude (`claude`, default model Haiku), LLM via HTTP, or any CLI command.
 - 🏷️ **Knows which session is talking** — each summary and approval cue is prefixed with a short per-session label (a rolling recap of the session's theme in `claude` mode, the transcript auto-title otherwise) so you can tell which of several Claude sessions just spoke.
 - 🤫 **Skip the session you're watching** — optionally mute the herdr pane that currently has focus (you watch it finish yourself); only the background sessions speak. Set `muteFocusedPane: true`.
+- 🖥️ **macOS menu-bar app** — live status and recent messages fed by the router's event stream, pause/resume, per-pane voice control, re-speak/copy any message, desktop notifications. See [macOS menu-bar app](#-macos-menu-bar-app-optional).
+- 🔕 **Notifications-only mode** — mute the audio while the message feed and desktop notifications keep flowing.
 - 🔌 **herdr plugin** — toggle voice on/off with a keybind, see status in your prompt.
 - 🪶 **Tiny footprint** — daemons are Node.js stdlib only (zero npm deps); CLI is Bash.
 - 🛠️ **Real service** — launchd (macOS) / systemd (Linux) startup, rotating logs, one-command install & uninstall.
@@ -43,6 +45,8 @@ Claude Code (host) finishes a task / needs approval
 
 **"Active device"** = the machine whose herdr client you're sitting in front of. When you run `herdr --remote <host>`, that device registers with the host router and deregisters on exit; with no live registration the router speaks on the host. This relies only on the registration + TTL + a forward-timeout fallback — **not** on herdr's internal API.
 
+The router also exposes a small HTTP + SSE API (`/state`, `/events`, `/toggle`, `/audio`, `/replay`, `/pane` — see **[docs/api.md](docs/api.md)**); the macOS menu-bar app is a client of exactly that API.
+
 Daemons + Claude hooks are **Node.js** (stdlib only); the CLI + installer are **Bash**. Full design, component-by-component, in **[docs/architecture.md](docs/architecture.md)**.
 
 ______________________________________________________________________
@@ -54,6 +58,7 @@ ______________________________________________________________________
 - `node`, `jq`, `curl`, and (for the remote scenario) `tailscale`.
 - A **Tailscale** mesh between your devices, if you want audio to follow you to a remote machine.
 - **Per-provider extras** (Piper install + voice model, or a Gemini API key) — see **[docs/providers.md](docs/providers.md)**.
+- **For the optional macOS menu-bar app**: a Swift toolchain — Xcode **Command Line Tools are enough**, no Xcode needed.
 
 ______________________________________________________________________
 
@@ -74,7 +79,13 @@ The installer detects your OS and picks a default TTS provider (`say` on macOS, 
 3. Load the **voice-router** service (`launchd` on macOS, `systemd --user` on Linux) and health-check it.
 4. Link the herdr plugin (`herdr plugin link plugin/`).
 
-That's it — finish a task and you'll hear it. To toggle with keybinds, add these to `~/.config/herdr/config.toml`, then run `herdr server reload-config`:
+That's it — finish a task and you'll hear it. On a Mac, optionally add the [menu-bar app](#-macos-menu-bar-app-optional):
+
+```sh
+app/macos/install-app.sh
+```
+
+To toggle with keybinds, add these to `~/.config/herdr/config.toml`, then run `herdr server reload-config`:
 
 ```toml
 # global on/off (whole machine)
@@ -110,15 +121,16 @@ ______________________________________________________________________
 
 ## 📚 Documentation
 
-| Doc                                        | What's in it                                                   |
-| ------------------------------------------ | -------------------------------------------------------------- |
-| [Architecture](docs/architecture.md)       | Routing, presence, the speak pipeline, abstraction layers.     |
-| [Configuration](docs/configuration.md)     | Complete `config.json` reference.                              |
-| [Providers](docs/providers.md)             | `say` / `piper` / `gemini` setup + writing your own.           |
-| [Summarizer](docs/summarizer.md)           | `heuristic` / `claude` / `llm` / `command` modes with recipes. |
-| [Remote setup](docs/remote-setup.md)       | Host + remote roles so audio follows you.                      |
-| [Troubleshooting](docs/troubleshooting.md) | No-sound checklist, diagnostics, logs.                         |
-| [Migration v1→v2](docs/migration-v1-v2.md) | What changed and why your old config still works.              |
+| Doc                                        | What's in it                                                                                |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| [Architecture](docs/architecture.md)       | Routing, presence, the speak pipeline, abstraction layers.                                  |
+| [Configuration](docs/configuration.md)     | Complete `config.json` reference.                                                           |
+| [Providers](docs/providers.md)             | `say` / `piper` / `gemini` setup + writing your own.                                        |
+| [Summarizer](docs/summarizer.md)           | `heuristic` / `claude` / `llm` / `command` modes with recipes.                              |
+| [Remote setup](docs/remote-setup.md)       | Host + remote roles so audio follows you.                                                   |
+| [HTTP API](docs/api.md)                    | Every router endpoint, the SSE event stream, and auth.                                      |
+| [Troubleshooting](docs/troubleshooting.md) | No-sound checklist, diagnostics, logs.                                                      |
+| [Migration v1→v2](docs/migration-v1-v2.md) | The v2 config schema change, and the later `tts.provider` → `tts.providers` auto-migration. |
 
 Also: [CONTRIBUTING.md](CONTRIBUTING.md) · [CHANGELOG.md](CHANGELOG.md)
 
@@ -141,6 +153,27 @@ The full field reference — `tts` (say/piper/gemini), `audio.player`, the `summ
 
 ______________________________________________________________________
 
+## 🖥️ macOS menu-bar app (optional)
+
+**HerdrVoiceBar** puts herdr-voice in the menu bar — a native Swift app talking to the router's [HTTP + SSE API](docs/api.md), so everything updates live:
+
+```sh
+app/macos/install-app.sh   # builds with Command Line Tools, installs to ~/Applications, launches
+```
+
+What you get:
+
+- **Status at a glance** — icon reflects the state; the menu header shows the state, the TTS fallback chain, and the summarizer mode.
+- **Recent messages** — the last utterances with session + time; each row can be **re-spoken** (even while muted) or **copied**.
+- **Duraklat / Sesli oku / Bildirimler** — the global master switch, an audio-mute toggle (notifications-only mode: nothing is spoken, but messages and desktop notifications keep flowing), and a notification filter (all / approvals only / off).
+- **Pane sesleri** — per-pane voice control (default / on / off) writing the same overrides as the `prefix+shift+p` keybind.
+- **Summarizer health** — when `summarize.mode` is `claude` and the CLI session drops, the menu warns and you get a one-shot notification to `/login`.
+- **Utilities** — open the log/config file, restart the service, launch at login (System Settings › Login Items via `SMAppService`), and the app version.
+
+Notifications are delivered via `osascript` (an ad-hoc-signed bundle can't use `UNUserNotificationCenter`), so they need no permission prompt but carry no action buttons.
+
+______________________________________________________________________
+
 ## CLI: `herdr-voice`
 
 Manages this machine's service daemon (router on a host, sink + watcher on a remote):
@@ -153,6 +186,7 @@ herdr-voice status      # running? + role + enabled + active provider + recent l
 herdr-voice logs        # tail -f ~/.herdr-voice/logs/herdr-voice.log
 herdr-voice enable      # turn voice on  (config.enabled=true)  + spoken confirmation
 herdr-voice disable     # turn voice off (config.enabled=false) + spoken confirmation
+herdr-voice version     # print the installed version
 herdr-voice uninstall   # remove everything (see Uninstall)
 ```
 
@@ -215,24 +249,18 @@ herdr-voice uninstall        # asks to confirm
 herdr-voice uninstall --yes  # no prompt
 ```
 
-Removes the service daemon + unit file, the CLI (`~/.local/bin/herdr-voice`), and `~/.herdr-voice/` (config + token). On a host it also strips the herdr-voice Claude hooks from `settings.json` (others preserved) and uninstalls the herdr plugin. By hand: the statusLine snippet and the herdr keybinds.
+Removes the service daemon + unit file, the CLI (`~/.local/bin/herdr-voice`), and `~/.herdr-voice/` (config + token). On a host it also strips the herdr-voice Claude hooks from `settings.json` (others preserved) and uninstalls the herdr plugin. By hand: the statusLine snippet, the herdr keybinds, and the menu-bar app if installed (quit it, delete `~/Applications/HerdrVoiceBar.app`, remove it from System Settings › Login Items).
 
 ______________________________________________________________________
 
 ## Development
 
 ```sh
-npm test    # node --test — Node stdlib test runner, zero deps
+npm test                                          # node --test — Node stdlib test runner, zero deps
+cd app/macos && swift run HerdrVoiceKitTests      # menu-bar app kit tests (plain executable, no XCTest)
 ```
 
 Project layout, conventions (zero-dependency, dependency injection), and how to add providers/modes/tests are in **[CONTRIBUTING.md](CONTRIBUTING.md)**.
-
-## Roadmap
-
-- **Windows** — TTS provider (PowerShell `System.Speech`), service (Task Scheduler / NSSM), and presence detection.
-- **Persistent Piper HTTP server** — `python -m piper.http_server` mode for lower-latency local synthesis.
-- **Audio streaming** — Piper `--output-raw` / Gemini SSE instead of whole-utterance WAV for faster first sound.
-- **Thin clients** (phone/tablet over SSH) — no local process to play audio yet.
 
 ## License
 
