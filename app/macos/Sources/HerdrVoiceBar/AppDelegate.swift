@@ -46,6 +46,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.notifier.post(plan)
             }
         }
+        state.onSummarizeAuthAlert = { [weak self] in
+            self?.notifier.post(NotificationPlan(
+                title: "herdr-voice",
+                body: "Claude oturumu kapalı — özetler kısıtlı, /login gerekli.",
+                isApproval: true, pane: ""))
+        }
 
         Task { await self.refreshState() }
 

@@ -67,6 +67,18 @@ final class MenuBarController {
         providerRow.isEnabled = false
         menu.addItem(providerRow)
 
+        let summarizeRow = NSMenuItem(
+            title: StatusSummary.summarizeLine(mode: state.summarize.mode),
+            action: nil, keyEquivalent: "")
+        summarizeRow.isEnabled = false
+        menu.addItem(summarizeRow)
+
+        if state.summarize.mode == "claude" && state.summarize.authBroken {
+            let warn = NSMenuItem(title: StatusSummary.summarizeAuthWarning, action: nil, keyEquivalent: "")
+            warn.isEnabled = false
+            menu.addItem(warn)
+        }
+
         if let remoteText = StatusSummary.remoteLine(state.remote) {
             let r = NSMenuItem(title: remoteText, action: nil, keyEquivalent: "")
             r.isEnabled = false

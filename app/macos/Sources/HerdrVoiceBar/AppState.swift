@@ -10,10 +10,12 @@ final class AppState {
     private(set) var audioMuted = false
     private(set) var remote = RemoteState(present: false, ip: nil, port: nil, expiresAt: nil)
     private(set) var tts = TtsState(providers: [])
+    private(set) var summarize = SummarizeState(mode: "", authBroken: false)
     private(set) var messages: [Message] = []   // newest last (ring-buffer order)
     private(set) var connected = false
     var onChange: (() -> Void)?
     var onMessage: ((Message) -> Void)?
+    var onSummarizeAuthAlert: (() -> Void)?
 
     private let maxMessages = 50
 
@@ -22,6 +24,7 @@ final class AppState {
         audioMuted = state.audioMuted
         remote = state.remote
         tts = state.tts
+        updateSummarize(state.summarize)
         messages = state.messages
         onChange?()
     }
@@ -30,6 +33,14 @@ final class AppState {
         guard connected != value else { return }
         connected = value
         onChange?()
+    }
+
+    // Update the summarizer status; fire the alert only on a false→true
+    // transition so the user gets ONE notification per login drop.
+    private func updateSummarize(_ next: SummarizeState) {
+        let wasBroken = summarize.authBroken
+        summarize = next
+        if !wasBroken && next.authBroken { onSummarizeAuthAlert?() }
     }
 
     // Apply one SSE event. Unknown events are ignored.
@@ -53,6 +64,12 @@ final class AppState {
             if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let m = obj["audioMuted"] as? Bool {
                 audioMuted = m
+                onChange?()
+            }
+        case "summarize_auth":
+            if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let b = obj["broken"] as? Bool {
+                updateSummarize(SummarizeState(mode: summarize.mode, authBroken: b))
                 onChange?()
             }
         case "register":
