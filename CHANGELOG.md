@@ -4,6 +4,24 @@ All notable changes to herdr-voice are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project aims
 to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] — 2026-07-03
+
+### Added
+
+- **App version in the menu** — the menu-bar app shows a dim
+  "herdr-voice vX.Y.Z" row above Çıkış. `build-app.sh` now stamps the bundle's
+  `CFBundleVersion`/`CFBundleShortVersionString` from the repo's
+  `package.json`, so the row tracks releases automatically (hidden in bare
+  dev-executable runs).
+
+### Changed
+
+- **README refresh** — documents the macOS menu-bar app (features + one-shot
+  install), links the HTTP API reference, adds the `version` CLI command and
+  app-uninstall steps, corrects the migration blurb (v1 configs are not
+  auto-migrated; the later `tts.provider` → `tts.providers` change is), and
+  drops the stale Roadmap section.
+
 ## [3.0.0] — 2026-07-03
 
 The desktop release: a native macOS menu-bar companion app on top of a new
@@ -192,3 +210,4 @@ Initial release.
 [1.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v1.0.0
 [2.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v2.0.0
 [3.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v3.0.0
+[3.1.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v3.1.0
