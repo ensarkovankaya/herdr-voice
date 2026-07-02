@@ -62,7 +62,7 @@ final class MenuBarController {
         menu.addItem(toggle)
 
         let providerRow = NSMenuItem(
-            title: StatusSummary.providerLine(provider: state.tts.provider, providers: state.tts.providers),
+            title: StatusSummary.providerLine(providers: state.tts.providers),
             action: nil, keyEquivalent: "")
         providerRow.isEnabled = false
         menu.addItem(providerRow)
