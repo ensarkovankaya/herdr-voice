@@ -64,9 +64,9 @@ test('speaker: logs tts_all_failed when every provider fails', async () => {
   assert.deepEqual(all.providers, ['gemini', 'piper', 'say']);
 });
 
-test('speaker: single provider (no providers list) — backward compatible', async () => {
+test('speaker: single-entry providers list — backward compatible', async () => {
   const calls = [];
   const speak = makeSpeaker({ getConfig: () => cfg, makeProvider: async (n) => ({ speak: async () => { calls.push(n); return { ok: true }; } }), player: async () => {}, log: () => {} });
   await speak('hi');
-  assert.deepEqual(calls, ['say']); // cfg.tts.provider='say', no providers list
+  assert.deepEqual(calls, ['say']); // cfg.tts.providers=['say']
 });
