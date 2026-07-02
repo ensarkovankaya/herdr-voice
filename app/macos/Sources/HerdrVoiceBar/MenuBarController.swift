@@ -212,6 +212,14 @@ final class MenuBarController {
         menu.addItem(settingsItem)
 
         menu.addItem(.separator())
+        // Bundle version (set by build-app.sh from package.json); absent when
+        // running the bare executable in development — then the row is skipped.
+        if let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String, !v.isEmpty {
+            let version = NSMenuItem(title: "herdr-voice v\(v)", action: nil, keyEquivalent: "")
+            version.attributedTitle = MenuStyle.secondary("herdr-voice v\(v)")
+            version.isEnabled = false
+            menu.addItem(version)
+        }
         menu.addItem(NSMenuItem(title: "Çıkış", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
         statusItem.menu = menu

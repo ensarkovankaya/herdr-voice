@@ -7,6 +7,9 @@ APP_NAME="HerdrVoiceBar"
 BUNDLE_ID="dev.herdr-voice.bar"
 DIST="dist"
 APP="$DIST/$APP_NAME.app"
+# Bundle version = the repo's package.json version (single source of truth);
+# the menu shows it as "herdr-voice vX.Y.Z".
+VERSION="$(jq -r '.version // "0.0.0"' ../../package.json 2>/dev/null || echo "0.0.0")"
 
 swift build -c release
 BIN="$(swift build -c release --show-bin-path)/$APP_NAME"
@@ -22,8 +25,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <dict>
   <key>CFBundleName</key><string>$APP_NAME</string>
   <key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
-  <key>CFBundleVersion</key><string>1</string>
-  <key>CFBundleShortVersionString</key><string>1.0</string>
+  <key>CFBundleVersion</key><string>$VERSION</string>
+  <key>CFBundleShortVersionString</key><string>$VERSION</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleExecutable</key><string>$APP_NAME</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
