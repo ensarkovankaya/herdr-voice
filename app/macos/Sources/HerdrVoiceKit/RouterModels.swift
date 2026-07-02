@@ -38,6 +38,14 @@ public struct TtsState: Codable, Equatable, Sendable {
     }
 }
 
+public struct SummarizeState: Codable, Equatable, Sendable {
+    public var mode: String
+    public var authBroken: Bool
+    public init(mode: String, authBroken: Bool) {
+        self.mode = mode; self.authBroken = authBroken
+    }
+}
+
 public struct RouterState: Codable, Equatable, Sendable {
     public var enabled: Bool
     public var audioMuted: Bool
@@ -46,6 +54,7 @@ public struct RouterState: Codable, Equatable, Sendable {
     public var language: String
     public var remote: RemoteState
     public var tts: TtsState
+    public var summarize: SummarizeState
     public var messages: [Message]
 }
 

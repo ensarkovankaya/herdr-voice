@@ -8,6 +8,7 @@ func routerModelsTests(_ t: TestReporter) {
     {"enabled":true,"audioMuted":true,"sessionDefault":"on","muteFocusedPane":true,"language":"tr",
      "remote":{"present":true,"ip":"100.1.2.3","port":8973,"expiresAt":123.0},
      "tts":{"providers":["gemini","piper"]},
+     "summarize":{"mode":"claude","authBroken":true},
      "messages":[
        {"id":"0-1","ts":"1970-01-01T00:00:00.000Z","text":"done","kind":"summary","cueKind":null,
         "sessionId":"s1","sessionTitle":"My App","workspace":"","tab":"","pane":"p1","mode":"local","provider":"gemini"}
@@ -21,6 +22,8 @@ func routerModelsTests(_ t: TestReporter) {
         t.check(state.remote.present, "remote present")
         t.check(state.remote.ip == "100.1.2.3", "remote ip")
         t.eq(state.tts.providers, ["gemini", "piper"], "tts providers")
+        t.eq(state.summarize.mode, "claude", "summarize mode")
+        t.check(state.summarize.authBroken, "summarize authBroken true")
         t.eq(state.messages.count, 1, "messages count")
         t.eq(state.messages[0].kind, "summary", "message kind")
         t.check(state.messages[0].cueKind == nil, "cueKind nil")
@@ -29,13 +32,14 @@ func routerModelsTests(_ t: TestReporter) {
 
     let absentJSON = """
     {"enabled":false,"audioMuted":false,"sessionDefault":"on","muteFocusedPane":false,"language":"en",
-     "remote":{"present":false},"tts":{"providers":[]},"messages":[]}
+     "remote":{"present":false},"tts":{"providers":[]},"summarize":{"mode":"heuristic","authBroken":false},"messages":[]}
     """
     do {
         let state = try RouterDecoder.state(Data(absentJSON.utf8))
         t.check(!state.audioMuted, "state.audioMuted false when absent")
         t.check(!state.remote.present, "remote absent")
         t.check(state.remote.ip == nil, "remote ip nil")
+        t.check(!state.summarize.authBroken, "summarize authBroken false")
         t.check(state.messages.isEmpty, "messages empty")
     } catch { t.check(false, "absent decode threw \(error)") }
 

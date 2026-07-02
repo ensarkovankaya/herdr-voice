@@ -23,4 +23,9 @@ func statusSummaryTests(_ t: TestReporter) {
     // remoteLine: present but ip missing -> generic label.
     t.eq(StatusSummary.remoteLine(RemoteState(present: true, ip: nil, port: nil, expiresAt: nil)) ?? "",
          "Remote: aktif", "present without ip")
+
+    // summarizeLine: shows the mode; empty mode reads as heuristic.
+    t.eq(StatusSummary.summarizeLine(mode: "claude"), "Özet: claude", "summarize line with mode")
+    t.eq(StatusSummary.summarizeLine(mode: ""), "Özet: heuristic", "summarize line empty mode")
+    t.eq(StatusSummary.summarizeAuthWarning, "⚠︎ Claude oturumu kapalı — /login gerekli", "auth warning string")
 }

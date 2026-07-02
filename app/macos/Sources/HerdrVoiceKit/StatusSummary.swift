@@ -18,4 +18,12 @@ public enum StatusSummary {
         let port = remote.port.map { ":\($0)" } ?? ""
         return "Remote: \(ip)\(port)"
     }
+
+    // The summarizer backend shown in the menu ("Özet: claude").
+    public static func summarizeLine(mode: String) -> String {
+        "Özet: \(mode.isEmpty ? "heuristic" : mode)"
+    }
+
+    // Shown when mode == "claude" and the CLI reports it is logged out.
+    public static let summarizeAuthWarning = "⚠︎ Claude oturumu kapalı — /login gerekli"
 }
