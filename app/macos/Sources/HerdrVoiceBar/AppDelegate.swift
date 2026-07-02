@@ -10,14 +10,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var sse: SSEClient?
     private let notifier = Notifier()
     private let settings = NotificationSettings()
-    private var launchAtLogin: LaunchAtLogin!
+    private var loginItem: LoginItemManager!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let config = (try? AppConfig.load()) ?? AppConfig(host: "127.0.0.1", port: 8973, token: "")
         state = AppState()
         client = RouterClient(config: config)
-        launchAtLogin = LaunchAtLogin(
-            programPath: Bundle.main.executablePath ?? CommandLine.arguments.first ?? "")
+        loginItem = LoginItemManager(legacy: LaunchAtLogin(
+            programPath: Bundle.main.executablePath ?? CommandLine.arguments.first ?? ""))
+        loginItem.migrateIfNeeded()
         controller = MenuBarController(state: state, settings: settings,
             onToggle: { [weak self] in self?.toggle() },
             onSetMode: { [weak self] mode in
@@ -25,15 +26,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 var s = self.settings; s.mode = mode
                 self.controller.rebuild()
             },
-            launchAtLoginEnabled: { [weak self] in self?.launchAtLogin.isEnabled ?? false },
+            launchAtLoginEnabled: { [weak self] in self?.loginItem.isEnabled ?? false },
             onToggleLaunchAtLogin: { [weak self] in
                 guard let self else { return }
-                do {
-                    if self.launchAtLogin.isEnabled { try self.launchAtLogin.disable() }
-                    else { try self.launchAtLogin.enable() }
-                } catch {
-                    NSLog("herdr-voice: launch-at-login toggle failed: \(error)")
-                }
+                self.loginItem.toggle()
                 self.controller.rebuild()
             },
             onToggleAudio: { [weak self] in self?.setAudio() },
