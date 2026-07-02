@@ -28,7 +28,7 @@ v1 stored the voice as a flat key:
 v2 nests it under the provider block:
 
 ```json
-{ "tts": { "provider": "say", "say": { "voice": "Samantha" } } }
+{ "tts": { "providers": ["say"], "say": { "voice": "Samantha" } } }
 ```
 
 v2 does **not** auto-migrate the old flat `voice` — it's simply ignored, and an
@@ -38,6 +38,15 @@ re-run the installer and pick your voice when prompted. This is a one-time edit.
 
 All other v1 fields (`token`, `host`, `port`, `language`, `enabled`,
 `sessionDefault`, `role`, timeouts, spoken-string overrides) are unchanged.
+
+### Later change: `tts.provider` → `tts.providers`
+
+A subsequent update replaced the single `tts.provider` string with an ordered
+`tts.providers` fallback list (`providers[0]` is the active engine, the rest
+are tried in order if it fails). If your config still has the old singular
+`tts.provider` key, it is **auto-migrated** into `tts.providers` on first load
+— the file is rewritten once, with `provider` folded into `providers` and then
+removed. No user action needed.
 
 ## Upgrading an existing install
 

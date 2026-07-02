@@ -38,18 +38,16 @@ language pack.
 
 ## `tts` — speech engine
 
-Picks the speech engine(s) and carries one settings block per provider. Set an
-ordered `providers` fallback list (tried until one produces audio) and/or a
-single `provider` string — omit `providers` and it defaults to `[provider]`, so
-older configs keep working. Only the speaking provider's block is used, but all
-blocks are merged over defaults, so switching engines is just an array/string
-change.
+Picks the speech engine(s) and carries one settings block per provider.
+`tts.providers` is an ordered fallback list — `providers[0]` is the active
+engine, tried first; the rest are tried in order if it fails to produce audio.
+Only the active provider's block is used, but all blocks are merged over
+defaults, so switching engines is just an array edit.
 
 ```jsonc
 {
   "tts": {
-    "providers": ["gemini", "piper", "say"], // ordered fallback; first to produce audio wins
-    "provider": "gemini",                 // single-engine shorthand (used when "providers" is omitted)
+    "providers": ["gemini", "piper", "say"], // ordered fallback; providers[0] is active, first to produce audio wins
     "say": {
       "voice": "Samantha"                 // any installed macOS voice (say -v '?')
     },
@@ -184,7 +182,7 @@ See [contributing.md](../CONTRIBUTING.md).
 {
   "language": "tr",
   "tts": {
-    "provider": "say",
+    "providers": ["say"],
     "say": { "voice": "Yelda" }
   }
 }

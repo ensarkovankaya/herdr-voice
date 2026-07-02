@@ -131,7 +131,7 @@ Config lives in `~/.herdr-voice/config.json` (override with `HERD_VOICE_CONFIG`)
 ```json
 {
   "language": "tr",
-  "tts": { "provider": "say", "say": { "voice": "Yelda" } }
+  "tts": { "providers": ["say"], "say": { "voice": "Yelda" } }
 }
 ```
 
@@ -149,7 +149,7 @@ Manages this machine's service daemon (router on a host, sink + watcher on a rem
 herdr-voice start       # start the daemon (launchd/systemd)
 herdr-voice stop        # stop it
 herdr-voice restart     # restart it
-herdr-voice status      # running? + role + enabled + provider + recent logs
+herdr-voice status      # running? + role + enabled + active provider + recent logs
 herdr-voice logs        # tail -f ~/.herdr-voice/logs/herdr-voice.log
 herdr-voice enable      # turn voice on  (config.enabled=true)  + spoken confirmation
 herdr-voice disable     # turn voice off (config.enabled=false) + spoken confirmation

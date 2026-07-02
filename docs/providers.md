@@ -9,7 +9,8 @@ Select and configure providers in the `tts` block of `config.json`; see
 
 ## Provider priority & fallback
 
-`tts.providers` is an ordered list, tried until one produces audio:
+`tts.providers` is an ordered list — `providers[0]` is the active engine, tried
+first; the rest are fallbacks tried in order until one produces audio:
 
 ```jsonc
 { "tts": { "providers": ["gemini", "piper", "say"] } }
@@ -21,8 +22,7 @@ speaker logs `tts_fallback {provider, reason, next}` and moves to the next
 provider; the one that finally speaks after a fallback logs
 `tts_spoke {provider}`. If all fail it logs `tts_all_failed {providers}`. A
 *playback* (audio-device) error does not trigger fallback — the same player is
-shared by every provider. Omitting `providers` falls back to the single
-`provider` string (default `say`), so existing configs keep working.
+shared by every provider. Omitting `providers` falls back to `["say"]`.
 
 ## How playback works
 
@@ -45,7 +45,7 @@ fails (each step logs a `WARN`).
 Built into macOS — nothing to install.
 
 ```jsonc
-{ "tts": { "provider": "say", "say": { "voice": "Samantha" } } }
+{ "tts": { "providers": ["say"], "say": { "voice": "Samantha" } } }
 ```
 
 - List available voices: `say -v '?'`.
@@ -81,7 +81,7 @@ python3 -m piper.download_voices en_US-lessac-medium --data-dir ~/.herdr-voice/v
 ```jsonc
 {
   "tts": {
-    "provider": "piper",
+    "providers": ["piper"],
     "piper": {
       "cmd": "python3 -m piper",
       "voice": "en_US-lessac-medium",
@@ -114,7 +114,7 @@ otherwise set it in the plist/unit or export it before `herdr-voice start`.
 ```jsonc
 {
   "tts": {
-    "provider": "gemini",
+    "providers": ["gemini"],
     "gemini": {
       "model": "gemini-2.5-flash-preview-tts",
       "voice": "Kore",
