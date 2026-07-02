@@ -85,7 +85,7 @@ test('wrong token → 401', async () => {
 test('SPEAK log carries session + herd meta fields', async () => {
   const logs = [];
   const { s, port } = await start(makeRouter({
-    getConfig: cfgOf({ tts: { provider: 'piper', piper: { voice: 'tr_TR-dfki-medium' } } }), speak: () => {}, forward: () => Promise.resolve(), now: () => 0,
+    getConfig: cfgOf({ tts: { providers: ['piper'], piper: { voice: 'tr_TR-dfki-medium' } } }), speak: () => {}, forward: () => Promise.resolve(), now: () => 0,
     log: (level, event, fields = {}) => logs.push({ level, event, ...fields }) }));
   await postJson(`http://127.0.0.1:${port}/speak`, { text: 'hi', sessionId: 'abcd1234ef', sessionTitle: 'My Title', workspace: 'ws1', tab: 't1', pane: 'w1:p4' }, { token: 'T' });
   await flush();
@@ -125,7 +125,7 @@ test('GET /state reports enabled, tts and recent messages', async () => {
   const persisted = [];
   const { s, port } = await start(makeRouter({
     getConfig: cfgOf({ enabled: true, sessionDefault: 'on', muteFocusedPane: true, language: 'tr',
-      tts: { provider: 'gemini', providers: ['gemini', 'piper'] } }),
+      tts: { providers: ['gemini', 'piper'] } }),
     speak: () => {}, forward: () => Promise.resolve(), now: () => 0, log: noLog,
     persist: (e) => persisted.push(e) }));
   await postJson(`http://127.0.0.1:${port}/speak`,
@@ -135,7 +135,7 @@ test('GET /state reports enabled, tts and recent messages', async () => {
   assert.equal(r.status, 200);
   assert.equal(r.json.enabled, true);
   assert.equal(r.json.language, 'tr');
-  assert.deepEqual(r.json.tts, { provider: 'gemini', providers: ['gemini', 'piper'] });
+  assert.deepEqual(r.json.tts, { providers: ['gemini', 'piper'] });
   assert.equal(r.json.messages.length, 1);
   const m = r.json.messages[0];
   assert.equal(m.text, 'done');

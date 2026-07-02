@@ -56,7 +56,7 @@ export function makeRouter({
         .then(() => forward(ip, port, text, fwdMeta))
         .catch(() => { remote = null; log('WARN', 'fallback_local', { target, ...m }); speak(text); });
     } else {
-      provider = cfg.tts?.providers?.[0] || cfg.tts?.provider || 'say';
+      provider = cfg.tts?.providers?.[0] || 'say';
       mode = 'local';
       log('INFO', 'speak', { text: capped.slice(0, 120), mode: 'local', provider, voice: cfg.tts?.[provider]?.voice, ...m });
       speak(text);
@@ -86,7 +86,7 @@ export function makeRouter({
       muteFocusedPane: !!cfg.muteFocusedPane,
       language: cfg.language || 'en',
       remote: live ? { present: true, ip: remote.ip, port: remote.port, expiresAt: remote.expiresAt } : { present: false },
-      tts: { provider: cfg.tts?.provider, providers: cfg.tts?.providers || [] },
+      tts: { providers: cfg.tts?.providers || [] },
       messages: messages.slice(),
     };
   }
