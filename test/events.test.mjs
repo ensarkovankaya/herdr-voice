@@ -41,3 +41,7 @@ test('streaming log forwards only whitelisted events to the hub', () => {
   assert.match(client.written[0], /^event: toggle\ndata: \{"ts":/);
   assert.ok(STREAM_EVENTS instanceof Set);
 });
+
+test('STREAM_EVENTS includes summarize_auth', () => {
+  assert.ok(STREAM_EVENTS.has('summarize_auth'));
+});

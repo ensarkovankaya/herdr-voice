@@ -324,3 +324,44 @@ test('a route that throws returns 500 without hanging', async () => {
   assert.equal(r.status, 500);
   s.close();
 });
+
+test('GET /state reports summarize mode with authBroken=false by default', async () => {
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf({ summarize: { mode: 'claude' } }), speak: () => {}, forward: () => Promise.resolve(), now: () => 0, log: noLog }));
+  const r = await getJson(port, '/state');
+  assert.deepEqual(r.json.summarize, { mode: 'claude', authBroken: false });
+  s.close();
+});
+
+test('summarizeAuthError flips authBroken and logs transitions once each way', async () => {
+  const logs = [];
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf({ summarize: { mode: 'claude' } }), speak: () => {}, forward: () => Promise.resolve(), now: () => 0,
+    log: (lvl, ev, f = {}) => logs.push({ lvl, ev, ...f }) }));
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'a', kind: 'summary', summarizeAuthError: true }, { token: 'T' });
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'b', kind: 'summary', summarizeAuthError: true }, { token: 'T' });
+  await flush();
+  let r = await getJson(port, '/state');
+  assert.equal(r.json.summarize.authBroken, true);
+  assert.equal(logs.filter((l) => l.ev === 'summarize_auth').length, 1);   // transition only, not per-post
+  assert.equal(logs.find((l) => l.ev === 'summarize_auth').lvl, 'WARN');
+  assert.equal(logs.find((l) => l.ev === 'summarize_auth').broken, true);
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'c', kind: 'summary' }, { token: 'T' });
+  await flush();
+  r = await getJson(port, '/state');
+  assert.equal(r.json.summarize.authBroken, false);
+  assert.equal(logs.filter((l) => l.ev === 'summarize_auth').length, 2);
+  assert.equal(logs.filter((l) => l.ev === 'summarize_auth')[1].broken, false);
+  s.close();
+});
+
+test('cue posts never touch authBroken', async () => {
+  const { s, port } = await start(makeRouter({
+    getConfig: cfgOf({ summarize: { mode: 'claude' } }), speak: () => {}, forward: () => Promise.resolve(), now: () => 0, log: noLog }));
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'a', kind: 'summary', summarizeAuthError: true }, { token: 'T' });
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'cue', kind: 'cue', cueKind: 'idle' }, { token: 'T' });
+  await flush();
+  const r = await getJson(port, '/state');
+  assert.equal(r.json.summarize.authBroken, true);   // cue did not clear it
+  s.close();
+});

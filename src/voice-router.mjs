@@ -21,6 +21,7 @@ export function makeRouter({
   ringSize = 50, textCap = 500,
 }) {
   let remote = null; // {ip, port, expiresAt}
+  let summarizeAuth = false; // claude CLI logged out? (reported by the Stop hook)
   let seq = 0;
   const messages = initialHistory.slice(-ringSize);
 
@@ -87,6 +88,7 @@ export function makeRouter({
       language: cfg.language || 'en',
       remote: live ? { present: true, ip: remote.ip, port: remote.port, expiresAt: remote.expiresAt } : { present: false },
       tts: { providers: cfg.tts?.providers || [] },
+      summarize: { mode: cfg.summarize?.mode || 'heuristic', authBroken: summarizeAuth },
       messages: messages.slice(),
     };
   }
@@ -122,6 +124,15 @@ export function makeRouter({
       if (req.url === '/deregister') { remote = null; log('INFO', 'deregister'); return sendJson(res, 200, { ok: true }); }
       if (req.url === '/speak') {
         sendJson(res, 202, { ok: true });
+        // Track the hook-reported claude login state; log only on transitions
+        // (the streaming logger fans summarize_auth out over SSE).
+        if ((body.kind || 'summary') === 'summary') {
+          const authErr = !!body.summarizeAuthError;
+          if (authErr !== summarizeAuth) {
+            summarizeAuth = authErr;
+            log(authErr ? 'WARN' : 'INFO', 'summarize_auth', { broken: authErr });
+          }
+        }
         route(body.text, cfg, { sessionId: body.sessionId, sessionTitle: body.sessionTitle, workspace: body.workspace, tab: body.tab, pane: body.pane, kind: body.kind, cueKind: body.cueKind });
         return;
       }
