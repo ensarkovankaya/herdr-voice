@@ -28,4 +28,10 @@ func statusSummaryTests(_ t: TestReporter) {
     t.eq(StatusSummary.summarizeLine(mode: "claude"), "Özet: claude", "summarize line with mode")
     t.eq(StatusSummary.summarizeLine(mode: ""), "Özet: heuristic", "summarize line empty mode")
     t.eq(StatusSummary.summarizeAuthWarning, "⚠︎ Claude oturumu kapalı — /login gerekli", "auth warning string")
+
+    // paneLabel: prefers sessionTitle, falls back to pane id when title empty.
+    t.eq(StatusSummary.paneLabel(PaneState(pane: "w1:p1", sessionTitle: "Proj A", override: nil)),
+         "Proj A", "label prefers title")
+    t.eq(StatusSummary.paneLabel(PaneState(pane: "w1:p1", sessionTitle: "", override: "off")),
+         "w1:p1", "falls back to pane id")
 }

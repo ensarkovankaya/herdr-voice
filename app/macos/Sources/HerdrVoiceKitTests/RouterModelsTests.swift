@@ -12,7 +12,8 @@ func routerModelsTests(_ t: TestReporter) {
      "messages":[
        {"id":"0-1","ts":"1970-01-01T00:00:00.000Z","text":"done","kind":"summary","cueKind":null,
         "sessionId":"s1","sessionTitle":"My App","workspace":"","tab":"","pane":"p1","mode":"local","provider":"gemini"}
-     ]}
+     ],
+     "panes":[{"pane":"w1:p1","sessionTitle":"Proj","override":"off"},{"pane":"w1:p2","sessionTitle":"","override":null}]}
     """
     do {
         let state = try RouterDecoder.state(Data(stateJSON.utf8))
@@ -28,11 +29,14 @@ func routerModelsTests(_ t: TestReporter) {
         t.eq(state.messages[0].kind, "summary", "message kind")
         t.check(state.messages[0].cueKind == nil, "cueKind nil")
         t.eq(state.messages[0].sessionTitle, "My App", "sessionTitle")
+        t.eq(state.panes.count, 2, "panes decoded")
+        t.eq(state.panes[0].override, "off", "override decoded")
+        t.check(state.panes[1].override == nil, "null override → nil")
     } catch { t.check(false, "state decode threw \(error)") }
 
     let absentJSON = """
     {"enabled":false,"audioMuted":false,"sessionDefault":"on","muteFocusedPane":false,"language":"en",
-     "remote":{"present":false},"tts":{"providers":[]},"summarize":{"mode":"heuristic","authBroken":false},"messages":[]}
+     "remote":{"present":false},"tts":{"providers":[]},"summarize":{"mode":"heuristic","authBroken":false},"messages":[],"panes":[]}
     """
     do {
         let state = try RouterDecoder.state(Data(absentJSON.utf8))
@@ -41,6 +45,7 @@ func routerModelsTests(_ t: TestReporter) {
         t.check(state.remote.ip == nil, "remote ip nil")
         t.check(!state.summarize.authBroken, "summarize authBroken false")
         t.check(state.messages.isEmpty, "messages empty")
+        t.check(state.panes.isEmpty, "panes empty")
     } catch { t.check(false, "absent decode threw \(error)") }
 
     let cueJSON = """

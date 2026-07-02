@@ -46,6 +46,15 @@ public struct SummarizeState: Codable, Equatable, Sendable {
     }
 }
 
+public struct PaneState: Codable, Equatable, Sendable {
+    public var pane: String
+    public var sessionTitle: String
+    public var override: String?
+    public init(pane: String, sessionTitle: String, override: String?) {
+        self.pane = pane; self.sessionTitle = sessionTitle; self.override = override
+    }
+}
+
 public struct RouterState: Codable, Equatable, Sendable {
     public var enabled: Bool
     public var audioMuted: Bool
@@ -56,6 +65,7 @@ public struct RouterState: Codable, Equatable, Sendable {
     public var tts: TtsState
     public var summarize: SummarizeState
     public var messages: [Message]
+    public var panes: [PaneState]
 }
 
 public enum RouterDecoder {

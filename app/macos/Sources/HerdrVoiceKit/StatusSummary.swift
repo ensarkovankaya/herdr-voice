@@ -26,4 +26,9 @@ public enum StatusSummary {
 
     // Shown when mode == "claude" and the CLI reports it is logged out.
     public static let summarizeAuthWarning = "⚠︎ Claude oturumu kapalı — /login gerekli"
+
+    // Menu label for a pane: the session title when known, else the raw pane id.
+    public static func paneLabel(_ p: PaneState) -> String {
+        p.sessionTitle.isEmpty ? p.pane : p.sessionTitle
+    }
 }
