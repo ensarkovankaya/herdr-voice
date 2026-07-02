@@ -31,4 +31,26 @@ public enum StatusSummary {
     public static func paneLabel(_ p: PaneState) -> String {
         p.sessionTitle.isEmpty ? p.pane : p.sessionTitle
     }
+
+    // Bold first line of the two-line status header. Priority mirrors the
+    // menu-bar icon: no connection > paused > notifications-only > active.
+    public static func statusHeadline(connected: Bool, enabled: Bool, audioMuted: Bool) -> String {
+        if !connected { return "Bağlantı yok" }
+        if !enabled { return "Duraklatıldı" }
+        if audioMuted { return "Sadece bildirim" }
+        return "Aktif"
+    }
+
+    // Secondary line under the headline: engine chain + summarizer mode.
+    public static func statusDetail(providers: [String], summarizeMode: String) -> String {
+        let chain = providers.filter { !$0.isEmpty }
+        let names = chain.isEmpty ? ["say"] : chain
+        return names.joined(separator: " → ") + " · özet: " + (summarizeMode.isEmpty ? "heuristic" : summarizeMode)
+    }
+
+    // Secondary line under a message row: "session · relative-time".
+    public static func messageSubtitle(sessionTitle: String, sessionId: String, relative: String) -> String {
+        let session = sessionTitle.isEmpty ? (sessionId.isEmpty ? "?" : sessionId) : sessionTitle
+        return relative.isEmpty ? session : session + " · " + relative
+    }
 }
