@@ -43,7 +43,10 @@ export function makeRouter({
     // Forward only the session/herd fields to the remote sink; kind/cueKind are
     // host-local metadata for the ring buffer + SSE, never sent over the wire
     // (keeps the forward payload shape unchanged — backward compatible).
-    const fwdMeta = { sessionId: m.sessionId, sessionTitle: m.sessionTitle, workspace: m.workspace, tab: m.tab, pane: m.pane };
+    const fwdMeta = {
+      sessionId: m.sessionId, sessionTitle: m.sessionTitle, workspace: m.workspace, tab: m.tab, pane: m.pane,
+      workspaceName: m.workspaceName, tabName: m.tabName, paneCwd: m.paneCwd,
+    };
     const capped = (text || '').slice(0, textCap);
     let mode; let provider;
     if (cfg.audioMuted) {
@@ -76,6 +79,9 @@ export function makeRouter({
       workspace: m.workspace || '',
       tab: m.tab || '',
       pane: m.pane || '',
+      workspaceName: m.workspaceName || '',
+      tabName: m.tabName || '',
+      paneCwd: m.paneCwd || '',
       mode,
       provider,
     });
@@ -90,7 +96,12 @@ export function makeRouter({
       const p = messages[i].pane;
       if (!p || seen.has(p)) continue;
       seen.add(p);
-      out.push({ pane: p, sessionTitle: messages[i].sessionTitle || '', override: overrides[paneKey(p)] || null });
+      out.push({
+        pane: p,
+        sessionTitle: messages[i].sessionTitle || '',
+        tabName: messages[i].tabName || '',
+        override: overrides[paneKey(p)] || null,
+      });
     }
     return out;
   }
@@ -151,7 +162,12 @@ export function makeRouter({
             log(authErr ? 'WARN' : 'INFO', 'summarize_auth', { broken: authErr });
           }
         }
-        route(body.text, cfg, { sessionId: body.sessionId, sessionTitle: body.sessionTitle, workspace: body.workspace, tab: body.tab, pane: body.pane, kind: body.kind, cueKind: body.cueKind });
+        route(body.text, cfg, {
+          sessionId: body.sessionId, sessionTitle: body.sessionTitle,
+          workspace: body.workspace, tab: body.tab, pane: body.pane,
+          workspaceName: body.workspaceName, tabName: body.tabName, paneCwd: body.paneCwd,
+          kind: body.kind, cueKind: body.cueKind,
+        });
         return;
       }
       if (req.url === '/toggle') {

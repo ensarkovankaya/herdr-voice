@@ -14,9 +14,21 @@ public enum StatusSummary {
     // Shown when mode == "claude" and the CLI reports it is logged out.
     public static let summarizeAuthWarning = "⚠︎ Claude oturumu kapalı — /login gerekli"
 
-    // Menu label for a pane: the session title when known, else the raw pane id.
+    // "TabName · p4": the tab label plus the pane's short number (the last
+    // `:`-separated component of the pane id). Falls back to the raw pane id
+    // when the tab label is unknown (outside herdr, pre-3.2 history entries).
+    public static func paneShortName(pane: String, tabName: String?) -> String {
+        let tn = tabName ?? ""
+        guard !tn.isEmpty else { return pane }
+        let pn = pane.split(separator: ":").last.map(String.init) ?? ""
+        return pn.isEmpty ? tn : tn + " · " + pn
+    }
+
+    // Menu label for a pane: tab label + pane number when known, else the
+    // session title, else the raw pane id.
     public static func paneLabel(_ p: PaneState) -> String {
-        p.sessionTitle.isEmpty ? p.pane : p.sessionTitle
+        if let tn = p.tabName, !tn.isEmpty { return paneShortName(pane: p.pane, tabName: tn) }
+        return p.sessionTitle.isEmpty ? p.pane : p.sessionTitle
     }
 
     // Bold first line of the two-line status header. Priority mirrors the
@@ -35,9 +47,19 @@ public enum StatusSummary {
         return names.joined(separator: " → ") + " · özet: " + (summarizeMode.isEmpty ? "heuristic" : summarizeMode)
     }
 
-    // Secondary line under a message row: "session · relative-time".
-    public static func messageSubtitle(sessionTitle: String, sessionId: String, relative: String) -> String {
+    // Secondary line under a message row:
+    // "session · workspace › tab p4 · relative-time", empty parts dropped —
+    // e.g. "DP-T7 recap · General › Herdr Voice p4 · 2 dk".
+    public static func messageSubtitle(sessionTitle: String, sessionId: String,
+                                       workspaceName: String = "", tabName: String = "",
+                                       pane: String = "", relative: String) -> String {
         let session = sessionTitle.isEmpty ? (sessionId.isEmpty ? "?" : sessionId) : sessionTitle
-        return relative.isEmpty ? session : session + " · " + relative
+        var tabPart = ""
+        if !tabName.isEmpty {
+            let pn = pane.split(separator: ":").last.map(String.init) ?? ""
+            tabPart = pn.isEmpty ? tabName : tabName + " " + pn
+        }
+        let location = [workspaceName, tabPart].filter { !$0.isEmpty }.joined(separator: " › ")
+        return [session, location, relative].filter { !$0.isEmpty }.joined(separator: " · ")
     }
 }

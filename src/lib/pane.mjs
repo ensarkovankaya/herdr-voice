@@ -78,3 +78,26 @@ export function paneIsFocused(paneId = process.env.HERDR_PANE_ID, {
     return JSON.parse(exec('herdr', ['pane', 'get', paneId]))?.result?.pane?.focused === true;
   } catch { return false; }
 }
+
+// Human-readable names for the current herdr location, resolved over the herdr
+// socket API: the workspace label, the tab label, and the pane's foreground
+// process cwd (panes have no label of their own in herdr). Best-effort — a
+// missing id skips its lookup, and any failure (outside herdr, CLI not on
+// PATH, socket error, malformed output) yields '' for that field, so callers
+// never block or throw on it.
+export function herdrNames({
+  workspaceId = process.env.HERDR_WORKSPACE_ID,
+  tabId = process.env.HERDR_TAB_ID,
+  paneId = process.env.HERDR_PANE_ID,
+  exec = (file, args) => execFileSync(file, args, { encoding: 'utf8', timeout: 1000 }),
+} = {}) {
+  const lookup = (id, args, pick) => {
+    if (!id) return '';
+    try { return String(pick(JSON.parse(exec('herdr', args))) ?? ''); } catch { return ''; }
+  };
+  return {
+    workspaceName: lookup(workspaceId, ['workspace', 'get', workspaceId], (j) => j?.result?.workspace?.label),
+    tabName: lookup(tabId, ['tab', 'get', tabId], (j) => j?.result?.tab?.label),
+    paneCwd: lookup(paneId, ['pane', 'get', paneId], (j) => j?.result?.pane?.foreground_cwd),
+  };
+}

@@ -16,9 +16,18 @@ func statusSummaryTests(_ t: TestReporter) {
 
     t.eq(StatusSummary.summarizeAuthWarning, "⚠︎ Claude oturumu kapalı — /login gerekli", "auth warning string")
 
-    // paneLabel: prefers sessionTitle, falls back to pane id when title empty.
+    // paneShortName: tab label + pane number, raw pane id without a tab label.
+    t.eq(StatusSummary.paneShortName(pane: "w653aa:p4", tabName: "Herdr Voice"),
+         "Herdr Voice · p4", "tab label + pane number")
+    t.eq(StatusSummary.paneShortName(pane: "w653aa:p4", tabName: nil), "w653aa:p4", "nil tab → pane id")
+    t.eq(StatusSummary.paneShortName(pane: "w653aa:p4", tabName: ""), "w653aa:p4", "empty tab → pane id")
+    t.eq(StatusSummary.paneShortName(pane: "", tabName: "Herdr Voice"), "Herdr Voice", "no pane id → tab alone")
+
+    // paneLabel: tabName wins, then sessionTitle, then the raw pane id.
+    t.eq(StatusSummary.paneLabel(PaneState(pane: "w1:p1", sessionTitle: "Proj A", tabName: "Tab A", override: nil)),
+         "Tab A · p1", "label prefers tab name")
     t.eq(StatusSummary.paneLabel(PaneState(pane: "w1:p1", sessionTitle: "Proj A", override: nil)),
-         "Proj A", "label prefers title")
+         "Proj A", "falls back to title")
     t.eq(StatusSummary.paneLabel(PaneState(pane: "w1:p1", sessionTitle: "", override: "off")),
          "w1:p1", "falls back to pane id")
 
@@ -47,4 +56,16 @@ func statusSummaryTests(_ t: TestReporter) {
          "abc123", "id fallback, no time")
     t.eq(StatusSummary.messageSubtitle(sessionTitle: "", sessionId: "", relative: "şimdi"),
          "? · şimdi", "unknown session")
+    t.eq(StatusSummary.messageSubtitle(sessionTitle: "DP-T7", sessionId: "s",
+                                       workspaceName: "General", tabName: "Herdr Voice",
+                                       pane: "w653aa:p4", relative: "2 dk"),
+         "DP-T7 · General › Herdr Voice p4 · 2 dk", "full location")
+    t.eq(StatusSummary.messageSubtitle(sessionTitle: "DP-T7", sessionId: "s",
+                                       workspaceName: "", tabName: "Herdr Voice",
+                                       pane: "w653aa:p4", relative: "2 dk"),
+         "DP-T7 · Herdr Voice p4 · 2 dk", "tab without workspace")
+    t.eq(StatusSummary.messageSubtitle(sessionTitle: "DP-T7", sessionId: "s",
+                                       workspaceName: "General", tabName: "",
+                                       pane: "w653aa:p4", relative: "2 dk"),
+         "DP-T7 · General · 2 dk", "workspace without tab")
 }

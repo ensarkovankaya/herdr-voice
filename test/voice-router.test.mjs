@@ -87,7 +87,10 @@ test('SPEAK log carries session + herd meta fields', async () => {
   const { s, port } = await start(makeRouter({
     getConfig: cfgOf({ tts: { providers: ['piper'], piper: { voice: 'tr_TR-dfki-medium' } } }), speak: () => {}, forward: () => Promise.resolve(), now: () => 0,
     log: (level, event, fields = {}) => logs.push({ level, event, ...fields }) }));
-  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'hi', sessionId: 'abcd1234ef', sessionTitle: 'My Title', workspace: 'ws1', tab: 't1', pane: 'w1:p4' }, { token: 'T' });
+  await postJson(`http://127.0.0.1:${port}/speak`, {
+    text: 'hi', sessionId: 'abcd1234ef', sessionTitle: 'My Title', workspace: 'ws1', tab: 't1', pane: 'w1:p4',
+    workspaceName: 'General', tabName: 'Herdr Voice', paneCwd: '/Users/x/proj',
+  }, { token: 'T' });
   await flush();
   const rec = logs.find((e) => e.event === 'speak');
   assert.ok(rec, JSON.stringify(logs));
@@ -96,6 +99,9 @@ test('SPEAK log carries session + herd meta fields', async () => {
   assert.equal(rec.workspace, 'ws1');
   assert.equal(rec.tab, 't1');
   assert.equal(rec.pane, 'w1:p4');
+  assert.equal(rec.workspaceName, 'General');
+  assert.equal(rec.tabName, 'Herdr Voice');
+  assert.equal(rec.paneCwd, '/Users/x/proj');
   assert.equal(rec.provider, 'piper');
   assert.equal(rec.voice, 'tr_TR-dfki-medium');
   s.close();
@@ -107,9 +113,15 @@ test('forward receives full session + herd meta', async () => {
     getConfig: cfgOf(), speak: () => {},
     forward: (ip, p, t, meta) => { gotMeta = meta; return Promise.resolve(); }, now: () => 0, log: noLog }));
   await postJson(`http://127.0.0.1:${port}/register`, { ip: '1.2.3.4' }, { token: 'T' });
-  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'x', sessionId: 's1', sessionTitle: 'My Title', workspace: 'ws1', tab: 't1', pane: 'p1' }, { token: 'T' });
+  await postJson(`http://127.0.0.1:${port}/speak`, {
+    text: 'x', sessionId: 's1', sessionTitle: 'My Title', workspace: 'ws1', tab: 't1', pane: 'p1',
+    workspaceName: 'General', tabName: 'Herdr Voice', paneCwd: '/Users/x/proj',
+  }, { token: 'T' });
   await flush();
-  assert.deepEqual(gotMeta, { sessionId: 's1', sessionTitle: 'My Title', workspace: 'ws1', tab: 't1', pane: 'p1' });
+  assert.deepEqual(gotMeta, {
+    sessionId: 's1', sessionTitle: 'My Title', workspace: 'ws1', tab: 't1', pane: 'p1',
+    workspaceName: 'General', tabName: 'Herdr Voice', paneCwd: '/Users/x/proj',
+  });
   s.close();
 });
 
@@ -129,7 +141,8 @@ test('GET /state reports enabled, tts and recent messages', async () => {
     speak: () => {}, forward: () => Promise.resolve(), now: () => 0, log: noLog,
     persist: (e) => persisted.push(e) }));
   await postJson(`http://127.0.0.1:${port}/speak`,
-    { text: 'done', sessionId: 's1', sessionTitle: 'My App', pane: 'p1', kind: 'summary' }, { token: 'T' });
+    { text: 'done', sessionId: 's1', sessionTitle: 'My App', pane: 'p1', kind: 'summary',
+      workspaceName: 'General', tabName: 'Herdr Voice', paneCwd: '/Users/x/proj' }, { token: 'T' });
   await flush();
   const r = await getJson(port, '/state');
   assert.equal(r.status, 200);
@@ -143,6 +156,9 @@ test('GET /state reports enabled, tts and recent messages', async () => {
   assert.equal(m.cueKind, null);
   assert.equal(m.sessionTitle, 'My App');
   assert.equal(m.pane, 'p1');
+  assert.equal(m.workspaceName, 'General');
+  assert.equal(m.tabName, 'Herdr Voice');
+  assert.equal(m.paneCwd, '/Users/x/proj');
   assert.equal(m.mode, 'local');
   assert.equal(m.provider, 'gemini');
   assert.equal(persisted.length, 1);          // persist() called
@@ -431,14 +447,14 @@ test('GET /state lists distinct panes newest-first with overrides', async () => 
     getConfig: cfgOf(), speak: () => {}, forward: () => Promise.resolve(), now: () => 0, log: noLog,
     getPaneOverrides: () => ({ w1_p1: 'off' }) }));
   await postJson(`http://127.0.0.1:${port}/speak`, { text: 'a', pane: 'w1:p1', sessionTitle: 'Proj A' }, { token: 'T' });
-  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'b', pane: 'w1:p2', sessionTitle: 'Proj B' }, { token: 'T' });
-  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'c', pane: 'w1:p1', sessionTitle: 'Proj A2' }, { token: 'T' });
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'b', pane: 'w1:p2', sessionTitle: 'Proj B', tabName: 'Tab B' }, { token: 'T' });
+  await postJson(`http://127.0.0.1:${port}/speak`, { text: 'c', pane: 'w1:p1', sessionTitle: 'Proj A2', tabName: 'Tab A' }, { token: 'T' });
   await postJson(`http://127.0.0.1:${port}/speak`, { text: 'd' }, { token: 'T' });   // no pane → skipped
   await flush();
   const r = await getJson(port, '/state');
   assert.deepEqual(r.json.panes, [
-    { pane: 'w1:p1', sessionTitle: 'Proj A2', override: 'off' },   // newest first, newest title
-    { pane: 'w1:p2', sessionTitle: 'Proj B', override: null },
+    { pane: 'w1:p1', sessionTitle: 'Proj A2', tabName: 'Tab A', override: 'off' },   // newest first, newest title
+    { pane: 'w1:p2', sessionTitle: 'Proj B', tabName: 'Tab B', override: null },
   ]);
   s.close();
 });

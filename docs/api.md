@@ -74,7 +74,7 @@ Returns the router's full snapshot.
   "tts": { "providers": ["say"] },
   "summarize": { "mode": "heuristic", "authBroken": false },
   "panes": [
-    { "pane": "%3", "sessionTitle": "refactor auth", "override": "on" }
+    { "pane": "%3", "sessionTitle": "refactor auth", "tabName": "Herdr Voice", "override": "on" }
   ],
   "messages": [
     {
@@ -85,9 +85,12 @@ Returns the router's full snapshot.
       "cueKind": null,
       "sessionId": "abc123",
       "sessionTitle": "refactor auth",
-      "workspace": "herd-voice",
-      "tab": "1",
+      "workspace": "w653aa39818c041",
+      "tab": "w653aa39818c041:t1",
       "pane": "%3",
+      "workspaceName": "General",
+      "tabName": "Herdr Voice",
+      "paneCwd": "/Users/me/Projects/herd-voice",
       "mode": "local",
       "provider": "say"
     }
@@ -97,36 +100,39 @@ Returns the router's full snapshot.
 
 Field notes:
 
-| Field                  | Meaning                                                                                                                                                                            |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `enabled`              | Global master switch (`config.enabled`).                                                                                                                                           |
-| `audioMuted`           | Global audio-mute switch (`config.audioMuted`).                                                                                                                                    |
-| `sessionDefault`       | Default per-pane voice state under herdr when no override is set (`"on"` / `"off"`).                                                                                               |
-| `muteFocusedPane`      | Whether the currently-focused herdr pane is kept silent.                                                                                                                           |
-| `language`             | Active spoken-string language pack (`"en"`, `"tr"`, ...).                                                                                                                          |
-| `remote`               | `{ present: false }` normally; while a remote is registered and unexpired: `{ present: true, ip, port, expiresAt }` (`expiresAt` is an epoch-ms timestamp).                        |
-| `tts.providers`        | Ordered TTS provider fallback list, e.g. `["say"]`.                                                                                                                                |
-| `summarize.mode`       | Active summarizer mode (`heuristic` / `llm` / `command` / `claude`).                                                                                                               |
-| `summarize.authBroken` | `true` when the `claude` summarizer mode last reported a login/auth failure (via the `summarizeAuthError` flag on `/speak`).                                                       |
-| `panes`                | Distinct panes seen in the ring buffer, newest first: `{ pane, sessionTitle, override }`. `override` is `"on"`, `"off"`, or `null` (no override — falls back to `sessionDefault`). |
-| `messages`             | The ring buffer (most recent `ringSize` entries, default 50), oldest first. See entry fields below.                                                                                |
+| Field                  | Meaning                                                                                                                                                                                     |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`              | Global master switch (`config.enabled`).                                                                                                                                                    |
+| `audioMuted`           | Global audio-mute switch (`config.audioMuted`).                                                                                                                                             |
+| `sessionDefault`       | Default per-pane voice state under herdr when no override is set (`"on"` / `"off"`).                                                                                                        |
+| `muteFocusedPane`      | Whether the currently-focused herdr pane is kept silent.                                                                                                                                    |
+| `language`             | Active spoken-string language pack (`"en"`, `"tr"`, ...).                                                                                                                                   |
+| `remote`               | `{ present: false }` normally; while a remote is registered and unexpired: `{ present: true, ip, port, expiresAt }` (`expiresAt` is an epoch-ms timestamp).                                 |
+| `tts.providers`        | Ordered TTS provider fallback list, e.g. `["say"]`.                                                                                                                                         |
+| `summarize.mode`       | Active summarizer mode (`heuristic` / `llm` / `command` / `claude`).                                                                                                                        |
+| `summarize.authBroken` | `true` when the `claude` summarizer mode last reported a login/auth failure (via the `summarizeAuthError` flag on `/speak`).                                                                |
+| `panes`                | Distinct panes seen in the ring buffer, newest first: `{ pane, sessionTitle, tabName, override }`. `override` is `"on"`, `"off"`, or `null` (no override — falls back to `sessionDefault`). |
+| `messages`             | The ring buffer (most recent `ringSize` entries, default 50), oldest first. See entry fields below.                                                                                         |
 
 Ring buffer entry (`messages[]`) fields:
 
-| Field          | Meaning                                                                                           |
-| -------------- | ------------------------------------------------------------------------------------------------- |
-| `id`           | Unique id, `"<epochMs>-<seq>"`.                                                                   |
-| `ts`           | ISO 8601 timestamp.                                                                               |
-| `text`         | The spoken text, capped at 500 chars.                                                             |
-| `kind`         | `"summary"` (default) or any `kind` sent to `/speak` (e.g. `"cue"`).                              |
-| `cueKind`      | Optional sub-kind for cue-type messages (e.g. which notification triggered it), or `null`.        |
-| `sessionId`    | Claude session id, or `""`.                                                                       |
-| `sessionTitle` | Human-readable session title, or `""`.                                                            |
-| `workspace`    | Workspace name, or `""`.                                                                          |
-| `tab`          | herdr tab id, or `""`.                                                                            |
-| `pane`         | herdr pane id, or `""`.                                                                           |
-| `mode`         | How it was delivered: `"local"` (spoke here), `"remote"` (forwarded), or `"muted"` (audio muted). |
-| `provider`     | TTS provider used for `mode: "local"` (e.g. `"say"`); `null` for `"remote"`/`"muted"`.            |
+| Field           | Meaning                                                                                           |
+| --------------- | ------------------------------------------------------------------------------------------------- |
+| `id`            | Unique id, `"<epochMs>-<seq>"`.                                                                   |
+| `ts`            | ISO 8601 timestamp.                                                                               |
+| `text`          | The spoken text, capped at 500 chars.                                                             |
+| `kind`          | `"summary"` (default) or any `kind` sent to `/speak` (e.g. `"cue"`).                              |
+| `cueKind`       | Optional sub-kind for cue-type messages (e.g. which notification triggered it), or `null`.        |
+| `sessionId`     | Claude session id, or `""`.                                                                       |
+| `sessionTitle`  | Human-readable session title, or `""`.                                                            |
+| `workspace`     | herdr workspace id, or `""`.                                                                      |
+| `tab`           | herdr tab id, or `""`.                                                                            |
+| `pane`          | herdr pane id, or `""`.                                                                           |
+| `workspaceName` | herdr workspace label (e.g. `"General"`), or `""`.                                                |
+| `tabName`       | herdr tab label (e.g. `"Herdr Voice"`), or `""`.                                                  |
+| `paneCwd`       | The pane's foreground process cwd at speak time, or `""`.                                         |
+| `mode`          | How it was delivered: `"local"` (spoke here), `"remote"` (forwarded), or `"muted"` (audio muted). |
+| `provider`      | TTS provider used for `mode: "local"` (e.g. `"say"`); `null` for `"remote"`/`"muted"`.            |
 
 ### `GET /events`
 
@@ -209,9 +215,12 @@ Request body fields (all optional except `text`):
 | `text`               | The text to speak (capped at 500 chars).                                                                                                                                                                             |
 | `sessionId`          | Claude session id.                                                                                                                                                                                                   |
 | `sessionTitle`       | Human-readable session title.                                                                                                                                                                                        |
-| `workspace`          | Workspace name.                                                                                                                                                                                                      |
+| `workspace`          | herdr workspace id.                                                                                                                                                                                                  |
 | `tab`                | herdr tab id.                                                                                                                                                                                                        |
 | `pane`               | herdr pane id.                                                                                                                                                                                                       |
+| `workspaceName`      | herdr workspace label (resolved by the hooks via `herdr workspace get`).                                                                                                                                             |
+| `tabName`            | herdr tab label (resolved via `herdr tab get`).                                                                                                                                                                      |
+| `paneCwd`            | The pane's foreground process cwd (resolved via `herdr pane get`).                                                                                                                                                   |
 | `kind`               | Message kind, e.g. `"summary"` (default) or `"cue"`.                                                                                                                                                                 |
 | `cueKind`            | Sub-kind for cue-type messages.                                                                                                                                                                                      |
 | `summarizeAuthError` | Only meaningful when `kind` is `"summary"` (the default): `true` if the `claude` summarizer mode's login/auth is broken. Drives `/state`'s `summarize.authBroken` and the `summarize_auth` SSE event on transitions. |
@@ -221,9 +230,12 @@ Request body fields (all optional except `text`):
   "text": "Refactored the auth module. Done.",
   "sessionId": "abc123",
   "sessionTitle": "refactor auth",
-  "workspace": "herd-voice",
-  "tab": "1",
+  "workspace": "w653aa39818c041",
+  "tab": "w653aa39818c041:t1",
   "pane": "%3",
+  "workspaceName": "General",
+  "tabName": "Herdr Voice",
+  "paneCwd": "/Users/me/Projects/herd-voice",
   "kind": "summary",
   "cueKind": null,
   "summarizeAuthError": false
@@ -334,9 +346,12 @@ Request:
   "text": "Refactored the auth module. Done.",
   "sessionId": "abc123",
   "sessionTitle": "refactor auth",
-  "workspace": "herd-voice",
-  "tab": "1",
-  "pane": "%3"
+  "workspace": "w653aa39818c041",
+  "tab": "w653aa39818c041:t1",
+  "pane": "%3",
+  "workspaceName": "General",
+  "tabName": "Herdr Voice",
+  "paneCwd": "/Users/me/Projects/herd-voice"
 }
 ```
 

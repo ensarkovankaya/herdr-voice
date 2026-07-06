@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { paneKey, readPaneOverride, voiceEnabledForPane, paneIsFocused, listPaneOverrides, writePaneOverride } from '../src/lib/pane.mjs';
+import { paneKey, readPaneOverride, voiceEnabledForPane, paneIsFocused, listPaneOverrides, writePaneOverride, herdrNames } from '../src/lib/pane.mjs';
 
 test('paneKey sanitizes non-alphanumerics to _', () => {
   assert.equal(paneKey('w653aa39818c041:p4'), 'w653aa39818c041_p4');
@@ -66,6 +66,36 @@ test('paneIsFocused: false when herdr is unavailable or its output is unusable',
   assert.equal(paneIsFocused('w1:p4', { exec: () => { throw new Error('ENOENT'); } }), false); // herdr not on PATH / socket down
   assert.equal(paneIsFocused('w1:p4', { exec: () => 'not json' }), false);
   assert.equal(paneIsFocused('w1:p4', { exec: () => JSON.stringify({ result: {} }) }), false);
+});
+
+test('herdrNames resolves workspace/tab labels and pane cwd over the herdr CLI', () => {
+  const exec = (file, args) => {
+    assert.equal(file, 'herdr');
+    if (args[0] === 'workspace') return JSON.stringify({ result: { workspace: { label: 'General' } } });
+    if (args[0] === 'tab') return JSON.stringify({ result: { tab: { label: 'Herdr Voice' } } });
+    return JSON.stringify({ result: { pane: { foreground_cwd: '/Users/x/proj' } } });
+  };
+  assert.deepEqual(herdrNames({ workspaceId: 'w1', tabId: 'w1:t3', paneId: 'w1:p4', exec }),
+    { workspaceName: 'General', tabName: 'Herdr Voice', paneCwd: '/Users/x/proj' });
+});
+
+test('herdrNames: missing ids skip their lookup, never shell out for them', () => {
+  const calls = [];
+  const exec = (file, args) => { calls.push(args[0]); return JSON.stringify({ result: { tab: { label: 'T' } } }); };
+  assert.deepEqual(herdrNames({ workspaceId: '', tabId: 'w1:t1', paneId: '', exec }),
+    { workspaceName: '', tabName: 'T', paneCwd: '' });
+  assert.deepEqual(calls, ['tab']);
+  assert.deepEqual(herdrNames({ workspaceId: '', tabId: '', paneId: '', exec: () => { throw new Error('should not run'); } }),
+    { workspaceName: '', tabName: '', paneCwd: '' });
+});
+
+test('herdrNames: CLI errors and unusable output yield empty strings', () => {
+  assert.deepEqual(herdrNames({ workspaceId: 'w1', tabId: 't1', paneId: 'p1', exec: () => { throw new Error('ENOENT'); } }),
+    { workspaceName: '', tabName: '', paneCwd: '' });
+  assert.deepEqual(herdrNames({ workspaceId: 'w1', tabId: 't1', paneId: 'p1', exec: () => 'not json' }),
+    { workspaceName: '', tabName: '', paneCwd: '' });
+  assert.deepEqual(herdrNames({ workspaceId: 'w1', tabId: 't1', paneId: 'p1', exec: () => JSON.stringify({ result: {} }) }),
+    { workspaceName: '', tabName: '', paneCwd: '' });
 });
 
 test('listPaneOverrides maps override files, skips garbage, missing dir → {}', () => {

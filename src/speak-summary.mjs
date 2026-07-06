@@ -7,8 +7,8 @@ import { makeCommandSummarizer } from './lib/summarize/command.mjs';
 import { makeClaudeSummarizer, isAuthFailure } from './lib/summarize/claude.mjs';
 import { RECURSION_GUARD_ENV } from './lib/summarize/spawn.mjs';
 import { postJson } from './lib/http.mjs';
-import { voiceEnabledForPane, paneIsFocused } from './lib/pane.mjs';
-import { extractLastAssistantText, extractSessionTitle } from './lib/transcript.mjs';
+import { voiceEnabledForPane, paneIsFocused, herdrNames } from './lib/pane.mjs';
+import { extractLastAssistantText, extractSessionTitle, isSubagentTranscript } from './lib/transcript.mjs';
 import { makeRecapper, formatPrefix } from './lib/summarize/recap.mjs';
 import { pruneOld } from './lib/session-store.mjs';
 export { extractLastAssistantText, extractSessionTitle };
@@ -61,6 +61,8 @@ async function main() {
   if (!input.transcript_path) return;
   const jsonl = await readSettledFile(input.transcript_path);
   if (jsonl == null) return;
+  // SDK-spawned agent sessions (subagents) fire this hook too — never speak them.
+  if (isSubagentTranscript(jsonl)) return;
   // Did any claude call fail because the CLI is logged out? Reported to the
   // router so it can log + surface the state in the menu-bar app.
   let summarizeAuthError = false;
@@ -83,6 +85,7 @@ async function main() {
       workspace: process.env.HERDR_WORKSPACE_ID || '',
       tab: process.env.HERDR_TAB_ID || '',
       pane: process.env.HERDR_PANE_ID || '',
+      ...herdrNames(), // workspaceName, tabName, paneCwd ('' outside herdr)
     }, { token: cfg.token, timeoutMs: cfg.postTimeoutMs });
   } catch { /* swallow */ }
 }

@@ -11,13 +11,19 @@ public struct Message: Codable, Equatable, Identifiable, Sendable {
     public var workspace: String
     public var tab: String
     public var pane: String
+    // Human-readable herdr names; optional — absent in ring-buffer entries
+    // recorded before the router learned to resolve them.
+    public var workspaceName: String?
+    public var tabName: String?
     public var mode: String
     public var provider: String?
     public init(id: String, ts: String, text: String, kind: String, cueKind: String?, sessionId: String,
-                sessionTitle: String, workspace: String, tab: String, pane: String, mode: String, provider: String?) {
+                sessionTitle: String, workspace: String, tab: String, pane: String,
+                workspaceName: String? = nil, tabName: String? = nil, mode: String, provider: String?) {
         self.id = id; self.ts = ts; self.text = text; self.kind = kind; self.cueKind = cueKind
         self.sessionId = sessionId; self.sessionTitle = sessionTitle; self.workspace = workspace
-        self.tab = tab; self.pane = pane; self.mode = mode; self.provider = provider
+        self.tab = tab; self.pane = pane; self.workspaceName = workspaceName; self.tabName = tabName
+        self.mode = mode; self.provider = provider
     }
 }
 
@@ -49,9 +55,11 @@ public struct SummarizeState: Codable, Equatable, Sendable {
 public struct PaneState: Codable, Equatable, Sendable {
     public var pane: String
     public var sessionTitle: String
+    // Tab label of the pane's newest message; optional for older routers.
+    public var tabName: String?
     public var override: String?
-    public init(pane: String, sessionTitle: String, override: String?) {
-        self.pane = pane; self.sessionTitle = sessionTitle; self.override = override
+    public init(pane: String, sessionTitle: String, tabName: String? = nil, override: String?) {
+        self.pane = pane; self.sessionTitle = sessionTitle; self.tabName = tabName; self.override = override
     }
 }
 

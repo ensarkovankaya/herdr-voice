@@ -120,7 +120,9 @@ final class MenuBarController {
             for msg in recent {
                 let when = RelativeTime.short(fromISO: msg.ts, now: now)
                 let subtitle = StatusSummary.messageSubtitle(
-                    sessionTitle: msg.sessionTitle, sessionId: msg.sessionId, relative: when)
+                    sessionTitle: msg.sessionTitle, sessionId: msg.sessionId,
+                    workspaceName: msg.workspaceName ?? "", tabName: msg.tabName ?? "",
+                    pane: msg.pane, relative: when)
                 let text = String(msg.text.prefix(60))
                 let item = NSMenuItem(title: text, action: nil, keyEquivalent: "")
                 item.attributedTitle = MenuStyle.twoLine(text, subtitle)

@@ -21,7 +21,12 @@ export function makeSinkHandler({ getConfig, speak, log }) {
       if (!cfg.enabled) { log('INFO', 'speak_skipped', { reason: 'disabled' }); return sendJson(res, 200, { skipped: true }); }
       sendJson(res, 202, { ok: true });
       const provider = cfg.tts?.providers?.[0] || 'say';
-      log('INFO', 'speak', { text: (body.text || '').slice(0, 200), provider, voice: cfg.tts?.[provider]?.voice, sessionId: body.sessionId, sessionTitle: body.sessionTitle, workspace: body.workspace, tab: body.tab, pane: body.pane });
+      log('INFO', 'speak', {
+        text: (body.text || '').slice(0, 200), provider, voice: cfg.tts?.[provider]?.voice,
+        sessionId: body.sessionId, sessionTitle: body.sessionTitle,
+        workspace: body.workspace, tab: body.tab, pane: body.pane,
+        workspaceName: body.workspaceName, tabName: body.tabName, paneCwd: body.paneCwd,
+      });
       speak(body.text);
       return;
     }

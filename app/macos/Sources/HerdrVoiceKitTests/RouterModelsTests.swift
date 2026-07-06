@@ -11,9 +11,10 @@ func routerModelsTests(_ t: TestReporter) {
      "summarize":{"mode":"claude","authBroken":true},
      "messages":[
        {"id":"0-1","ts":"1970-01-01T00:00:00.000Z","text":"done","kind":"summary","cueKind":null,
-        "sessionId":"s1","sessionTitle":"My App","workspace":"","tab":"","pane":"p1","mode":"local","provider":"gemini"}
+        "sessionId":"s1","sessionTitle":"My App","workspace":"","tab":"","pane":"p1",
+        "workspaceName":"General","tabName":"Herdr Voice","paneCwd":"/Users/x/proj","mode":"local","provider":"gemini"}
      ],
-     "panes":[{"pane":"w1:p1","sessionTitle":"Proj","override":"off"},{"pane":"w1:p2","sessionTitle":"","override":null}]}
+     "panes":[{"pane":"w1:p1","sessionTitle":"Proj","tabName":"Tab A","override":"off"},{"pane":"w1:p2","sessionTitle":"","override":null}]}
     """
     do {
         let state = try RouterDecoder.state(Data(stateJSON.utf8))
@@ -29,8 +30,12 @@ func routerModelsTests(_ t: TestReporter) {
         t.eq(state.messages[0].kind, "summary", "message kind")
         t.check(state.messages[0].cueKind == nil, "cueKind nil")
         t.eq(state.messages[0].sessionTitle, "My App", "sessionTitle")
+        t.check(state.messages[0].workspaceName == "General", "workspaceName decoded")
+        t.check(state.messages[0].tabName == "Herdr Voice", "tabName decoded")
         t.eq(state.panes.count, 2, "panes decoded")
         t.eq(state.panes[0].override, "off", "override decoded")
+        t.check(state.panes[0].tabName == "Tab A", "pane tabName decoded")
+        t.check(state.panes[1].tabName == nil, "absent pane tabName → nil")
         t.check(state.panes[1].override == nil, "null override → nil")
     } catch { t.check(false, "state decode threw \(error)") }
 
@@ -59,5 +64,7 @@ func routerModelsTests(_ t: TestReporter) {
         t.check(msg.cueKind == "permission", "cueKind permission")
         t.eq(msg.mode, "remote", "mode remote")
         t.check(msg.provider == nil, "provider nil")
+        t.check(msg.workspaceName == nil, "absent workspaceName → nil (pre-3.2 entry)")
+        t.check(msg.tabName == nil, "absent tabName → nil (pre-3.2 entry)")
     } catch { t.check(false, "cue decode threw \(error)") }
 }

@@ -1,9 +1,25 @@
 import { fileURLToPath } from 'node:url';
+import { openSync, readSync, closeSync } from 'node:fs';
 import { loadConfig } from './lib/config.mjs';
 import { postJson } from './lib/http.mjs';
-import { voiceEnabledForPane, paneIsFocused } from './lib/pane.mjs';
+import { voiceEnabledForPane, paneIsFocused, herdrNames } from './lib/pane.mjs';
 import { readSession } from './lib/session-store.mjs';
 import { formatPrefix } from './lib/summarize/recap.mjs';
+import { isSubagentTranscript } from './lib/transcript.mjs';
+
+// First `bytes` of a file as UTF-8 ('' on any error). Transcripts can be tens
+// of MB; the entrypoint marker sits in the first few lines, so a bounded head
+// read is enough for the subagent check without loading the whole file.
+function readHead(path, bytes = 65536) {
+  try {
+    const fd = openSync(path, 'r');
+    try {
+      const buf = Buffer.alloc(bytes);
+      const n = readSync(fd, buf, 0, bytes, 0);
+      return buf.toString('utf8', 0, n);
+    } finally { closeSync(fd); }
+  } catch { return ''; }
+}
 
 // Pick the spoken cue by Notification kind: `idle_prompt` (Claude is idle,
 // waiting for the user) gets `cueIdle`; permission prompts and every other type
@@ -49,6 +65,8 @@ async function main() {
   if (cfg.muteFocusedPane && paneIsFocused()) return;
   let input = {};
   try { input = JSON.parse(await readStdin()); } catch { /* still send the fixed cue */ }
+  // SDK-spawned agent sessions (subagents) fire this hook too — never cue them.
+  if (input && input.transcript_path && isSubagentTranscript(readHead(input.transcript_path))) return;
   const sessionId = (input && input.session_id) || '';
   try {
     await postJson(`http://${cfg.host}:${cfg.port}/speak`, {
@@ -58,6 +76,7 @@ async function main() {
       workspace: process.env.HERDR_WORKSPACE_ID || '',
       tab: process.env.HERDR_TAB_ID || '',
       pane: process.env.HERDR_PANE_ID || '',
+      ...herdrNames(), // workspaceName, tabName, paneCwd ('' outside herdr)
     }, { token: cfg.token, timeoutMs: cfg.postTimeoutMs });
   } catch { /* swallow */ }
 }

@@ -22,6 +22,24 @@ export function extractLastAssistantText(jsonl) {
   return '';
 }
 
+// Was this transcript written by an SDK-spawned agent session (a subagent,
+// an agent platform, ...)? Those sessions stamp `entrypoint: "sdk-cli"` on
+// their transcript lines — interactive and background sessions stamp "cli" —
+// yet they fire the same global Stop/Notification hooks. Their turns are
+// machine-to-machine chatter that should never be spoken or cued. Returns
+// true only on a definite "sdk-cli" match (first entrypoint field found);
+// unknown or absent entrypoints speak as before.
+export function isSubagentTranscript(jsonl) {
+  for (const raw of (jsonl || '').split('\n')) {
+    const line = raw.trim();
+    if (!line) continue;
+    let o;
+    try { o = JSON.parse(line); } catch { continue; }
+    if (o && typeof o.entrypoint === 'string') return o.entrypoint === 'sdk-cli';
+  }
+  return false;
+}
+
 // Walk the JSONL transcript backwards and return the most recent session title
 // (Claude's auto-generated `ai-title` line); '' if none is present.
 export function extractSessionTitle(jsonl) {
