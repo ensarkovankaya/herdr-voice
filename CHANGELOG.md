@@ -4,6 +4,30 @@ All notable changes to herdr-voice are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project aims
 to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] — 2026-07-06
+
+### Added
+
+- **herdr names in logs and the menu** — utterances now carry the human-readable
+  herdr `workspaceName` (workspace label), `tabName` (tab label), and `paneCwd`
+  (the pane's foreground-process cwd), resolved over the herdr socket API by the
+  hooks. They flow through the log lines, the ring buffer (`/state`, SSE, and
+  `history.jsonl`), and the remote-sink forward. The menu-bar app's message
+  subtitle now reads `session · workspace › tab p4 · time`, and the **Pane
+  sesleri** submenu labels panes as `Tab · p4` (panes have no label of their own
+  in herdr). All fields are best-effort — empty outside herdr — and the new
+  message/pane fields are optional, so older history entries still decode.
+
+### Fixed
+
+- **SDK-spawned agent sessions no longer speak or cue** — sessions started by the
+  Claude Agent SDK (subagents, agent platforms) fire the same global
+  Stop/Notification hooks, so their machine-to-machine turns ("Merhaba, nasıl
+  yardımcı olabilirim?", "özetlenecek mesaj yok") were being summarized and
+  spoken over the real session's audio. Both hooks now detect the
+  `entrypoint: "sdk-cli"` transcript marker and bail before speaking or cueing;
+  interactive and background `cli` sessions are unaffected.
+
 ## [3.1.0] — 2026-07-03
 
 ### Added
@@ -211,3 +235,4 @@ Initial release.
 [2.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v2.0.0
 [3.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v3.0.0
 [3.1.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v3.1.0
+[3.2.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v3.2.0
