@@ -4,6 +4,17 @@ All notable changes to herdr-voice are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project aims
 to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.1] — 2026-07-06
+
+### Fixed
+
+- **Summary messages show the session title again, not the raw session id** —
+  Claude Code renamed the transcript's title line from `ai-title` (`aiTitle`) to
+  `custom-title` (`customTitle`), so `extractSessionTitle` always came back empty
+  and the menu fell back to the session id for Stop-hook summaries (cues were
+  unaffected — they use the cached recap prefix). The extractor now reads
+  `custom-title` first and keeps the `ai-title` fallback for older transcripts.
+
 ## [3.2.0] — 2026-07-06
 
 ### Added
@@ -236,3 +247,4 @@ Initial release.
 [3.0.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v3.0.0
 [3.1.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v3.1.0
 [3.2.0]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v3.2.0
+[3.2.1]: https://github.com/ensarkovankaya/herdr-voice/releases/tag/v3.2.1
