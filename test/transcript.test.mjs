@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { extractNewTurns, isSubagentTranscript } from '../src/lib/transcript.mjs';
+import { extractNewTurns, isSubagentTranscript, extractSessionTitle } from '../src/lib/transcript.mjs';
 
 const line = (o) => JSON.stringify(o);
 
@@ -26,6 +26,35 @@ test('extractNewTurns collects both roles and skips malformed/partial lines', ()
 test('extractNewTurns with no new content returns empty string', () => {
   const jsonl = line({ type: 'assistant', message: { role: 'assistant', content: 'x' } });
   assert.equal(extractNewTurns(jsonl, jsonl.length), '');
+});
+
+test('extractSessionTitle reads custom-title (current Claude Code format)', () => {
+  const jsonl = [
+    line({ type: 'user', message: { role: 'user', content: 'hi' } }),
+    line({ type: 'custom-title', customTitle: 'herdr-voice', sessionId: 's1' }),
+    line({ type: 'assistant', message: { role: 'assistant', content: 'ok' } }),
+  ].join('\n');
+  assert.equal(extractSessionTitle(jsonl), 'herdr-voice');
+});
+
+test('extractSessionTitle falls back to ai-title (pre-rename transcripts)', () => {
+  const jsonl = line({ type: 'ai-title', aiTitle: 'refactor auth' });
+  assert.equal(extractSessionTitle(jsonl), 'refactor auth');
+});
+
+test('extractSessionTitle returns the newest title and trims it', () => {
+  const jsonl = [
+    line({ type: 'custom-title', customTitle: 'old title' }),
+    line({ type: 'custom-title', customTitle: '  new title  ' }),
+  ].join('\n');
+  assert.equal(extractSessionTitle(jsonl), 'new title');
+});
+
+test('extractSessionTitle: no title, empty title, or garbage → empty string', () => {
+  assert.equal(extractSessionTitle(line({ type: 'assistant', message: { role: 'assistant', content: 'x' } })), '');
+  assert.equal(extractSessionTitle(line({ type: 'custom-title', customTitle: '   ' })), '');
+  assert.equal(extractSessionTitle('not json\n{broken'), '');
+  assert.equal(extractSessionTitle(''), '');
 });
 
 test('isSubagentTranscript: true only for sdk-cli entrypoint', () => {

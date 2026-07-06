@@ -40,8 +40,10 @@ export function isSubagentTranscript(jsonl) {
   return false;
 }
 
-// Walk the JSONL transcript backwards and return the most recent session title
-// (Claude's auto-generated `ai-title` line); '' if none is present.
+// Walk the JSONL transcript backwards and return the most recent session
+// title; '' if none is present. Claude Code writes this as a `custom-title`
+// line (`customTitle` field); older transcripts used `ai-title` (`aiTitle`),
+// kept as a fallback so history from before the rename still resolves.
 export function extractSessionTitle(jsonl) {
   const lines = jsonl.split('\n');
   for (let i = lines.length - 1; i >= 0; i--) {
@@ -49,7 +51,11 @@ export function extractSessionTitle(jsonl) {
     if (!line) continue;
     let o;
     try { o = JSON.parse(line); } catch { continue; }
-    if (o && o.type === 'ai-title' && typeof o.aiTitle === 'string' && o.aiTitle.trim()) {
+    if (!o) continue;
+    if (o.type === 'custom-title' && typeof o.customTitle === 'string' && o.customTitle.trim()) {
+      return o.customTitle.trim();
+    }
+    if (o.type === 'ai-title' && typeof o.aiTitle === 'string' && o.aiTitle.trim()) {
       return o.aiTitle.trim();
     }
   }
